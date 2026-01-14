@@ -130,10 +130,16 @@
     letter-spacing: 0.02em;
   }
 
-  h1, .font-bebas {
+  h1:not(.font-fugaz), .font-bebas {
     font-family: 'Bebas Neue', system-ui, sans-serif;
     font-weight: 400;
     letter-spacing: 0.04em;
+  }
+
+  .font-fugaz {
+    font-family: 'Fugaz One', system-ui, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.02em;
   }
 }
 
