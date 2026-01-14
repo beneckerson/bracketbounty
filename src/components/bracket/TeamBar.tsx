@@ -7,13 +7,15 @@ interface TeamBarProps {
 }
 
 const colorMap: Record<string, string> = {
-  'team-red': 'bg-team-red',
+  'team-crimson': 'bg-team-crimson',   // IND, BAMA
+  'team-scarlet': 'bg-team-scarlet',   // OSU
+  'team-red': 'bg-team-red',           // UGA, TTU
+  'team-green': 'bg-team-green',       // ORE
+  'team-orange': 'bg-team-orange',     // MIAMI
+  'team-navy': 'bg-team-navy',         // MISS
   'team-blue': 'bg-team-blue',
-  'team-green': 'bg-team-green',
-  'team-orange': 'bg-team-orange',
   'team-purple': 'bg-team-purple',
   'team-gold': 'bg-team-gold',
-  'team-navy': 'bg-team-navy',
   'team-teal': 'bg-team-teal',
 };
 

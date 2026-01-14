@@ -53,14 +53,16 @@
     --live-indicator: 0 84% 60%;
     --upcoming-indicator: 210 60% 25%;
 
-    /* Team bar colors (muted versions) */
-    --team-red: 0 65% 45%;
+    /* Team bar colors (muted versions for specific teams) */
+    --team-crimson: 348 70% 35%;      /* IND, BAMA - muted crimson */
+    --team-scarlet: 0 75% 40%;        /* OSU - muted scarlet */
+    --team-red: 0 65% 40%;            /* UGA, TTU - muted red */
+    --team-green: 142 55% 32%;        /* ORE - muted green */
+    --team-orange: 25 75% 48%;        /* MIAMI - muted orange */
+    --team-navy: 220 55% 28%;         /* MISS - muted navy */
     --team-blue: 210 70% 40%;
-    --team-green: 142 55% 35%;
-    --team-orange: 25 80% 50%;
     --team-purple: 280 55% 45%;
     --team-gold: 45 80% 45%;
-    --team-navy: 220 50% 25%;
     --team-teal: 175 60% 35%;
 
     /* Shadows */

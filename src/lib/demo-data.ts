@@ -58,7 +58,7 @@ export const demoParticipants: Participant[] = [
   { id: 'p8', displayName: 'Kool', initials: 'KO', avatarUrl: 'https://i.pravatar.cc/150?u=kool', venmoHandle: '@kool', isClaimed: true },
 ];
 
-// Demo teams for CFP - using actual 2026 CFP teams with correct seeds
+// Demo teams for CFP - using actual 2026 CFP teams with correct seeds and colors
 export const cfpTeams: Team[] = [
   { code: 'IND', name: 'Indiana', abbreviation: 'IND', seed: 1, color: 'team-crimson' },
   { code: 'OSU', name: 'Ohio State', abbreviation: 'OSU', seed: 2, color: 'team-scarlet' },
