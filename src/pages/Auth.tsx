@@ -74,8 +74,11 @@ export default function Auth() {
             <p className="text-muted-foreground mb-6">
               We sent a magic link to <span className="font-medium text-foreground">{sentEmail}</span>
             </p>
-            <p className="text-sm text-muted-foreground mb-6">
+            <p className="text-sm text-muted-foreground mb-4">
               Click the link in the email to sign in. The link will expire in 1 hour.
+            </p>
+            <p className="text-sm text-amber-700 dark:text-amber-400 mb-6 bg-amber-50 dark:bg-amber-950/30 p-3 rounded-lg border border-amber-200 dark:border-amber-800">
+              📧 Don't see the email? Check your spam or junk folder.
             </p>
             <Button 
               variant="ghost" 
