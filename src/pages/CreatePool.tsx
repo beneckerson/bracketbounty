@@ -205,7 +205,14 @@ export default function CreatePool() {
 
           {/* Form */}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
+            <form 
+              onSubmit={(e) => e.preventDefault()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && currentStep !== 4) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div className="bg-card border border-border rounded-2xl p-6 sm:p-8">
                 {/* Step 1: Competition */}
                 {currentStep === 1 && (
@@ -512,7 +519,11 @@ export default function CreatePool() {
                       <ArrowRight className="h-4 w-4 ml-2" />
                     </Button>
                   ) : (
-                    <Button type="submit" disabled={isSubmitting}>
+                    <Button 
+                      type="button" 
+                      disabled={isSubmitting}
+                      onClick={() => form.handleSubmit(onSubmit)()}
+                    >
                       {isSubmitting ? (
                         <>
                           <Loader2 className="h-4 w-4 mr-2 animate-spin" />
