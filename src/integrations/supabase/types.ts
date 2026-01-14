@@ -602,6 +602,64 @@ export type Database = {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
+      get_pool_by_id_public: {
+        Args: { p_claim_token?: string; p_pool_id: string }
+        Returns: {
+          allocation_method: Database["public"]["Enums"]["allocation_method"]
+          buyin_amount_cents: number
+          competition_key: string
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          max_players: number
+          mode: Database["public"]["Enums"]["pool_mode"]
+          name: string
+          payout_note: string
+          scoring_rule: Database["public"]["Enums"]["scoring_rule"]
+          season: string
+          status: Database["public"]["Enums"]["pool_status"]
+          teams_per_player: number
+        }[]
+      }
+      get_pool_details_by_code: {
+        Args: { p_code: string }
+        Returns: {
+          buyin_amount_cents: number
+          competition_key: string
+          id: string
+          max_players: number
+          member_count: number
+          mode: Database["public"]["Enums"]["pool_mode"]
+          name: string
+          scoring_rule: Database["public"]["Enums"]["scoring_rule"]
+          season: string
+          status: Database["public"]["Enums"]["pool_status"]
+        }[]
+      }
+      get_pool_for_guest: {
+        Args: { p_claim_token: string }
+        Returns: {
+          competition_key: string
+          display_name: string
+          member_id: string
+          pool_id: string
+          pool_name: string
+          season: string
+          status: Database["public"]["Enums"]["pool_status"]
+        }[]
+      }
+      get_pool_members_public: {
+        Args: { p_claim_token?: string; p_pool_id: string }
+        Returns: {
+          display_name: string
+          id: string
+          is_claimed: boolean
+          joined_at: string
+          role: Database["public"]["Enums"]["member_role"]
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -620,6 +678,13 @@ export type Database = {
       is_venmo_visible: {
         Args: { _member_id: string; _pool_id: string }
         Returns: boolean
+      }
+      join_pool_as_guest: {
+        Args: { p_display_name: string; p_pool_id: string }
+        Returns: {
+          claim_token: string
+          member_id: string
+        }[]
       }
       lookup_pool_by_invite_code: {
         Args: { code: string }

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Copy, Check, Settings, Loader2 } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, Settings, Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
@@ -59,30 +59,78 @@ export default function Pool() {
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
+  const [isGuest, setIsGuest] = useState(false);
+  const [guestDisplayName, setGuestDisplayName] = useState<string | null>(null);
 
   const isCreator = pool?.created_by === user?.id;
+  
+  // Get claim token for this pool (if guest)
+  const claimToken = poolId ? localStorage.getItem(`pool_claim_${poolId}`) : null;
 
   const fetchPoolData = async () => {
     if (!poolId) return;
 
     try {
-      const { data: poolData, error: poolError } = await supabase
-        .from('pools')
-        .select('*')
-        .eq('id', poolId)
-        .single();
+      // First, try to fetch as authenticated user
+      if (user) {
+        const { data: poolData, error: poolError } = await supabase
+          .from('pools')
+          .select('*')
+          .eq('id', poolId)
+          .single();
 
-      if (poolError) throw poolError;
-      setPool(poolData);
+        if (!poolError && poolData) {
+          setPool(poolData);
+          setIsGuest(false);
 
-      const { data: membersData, error: membersError } = await supabase
-        .from('pool_members')
-        .select('id, display_name, role, is_claimed, user_id, joined_at')
-        .eq('pool_id', poolId)
-        .order('joined_at', { ascending: true });
+          const { data: membersData } = await supabase
+            .from('pool_members')
+            .select('id, display_name, role, is_claimed, user_id, joined_at')
+            .eq('pool_id', poolId)
+            .order('joined_at', { ascending: true });
 
-      if (membersError) throw membersError;
-      setMembers(membersData || []);
+          setMembers(membersData || []);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // If no user or RLS blocked, try guest access via claim token
+      if (claimToken) {
+        const { data: poolData, error: poolError } = await supabase
+          .rpc('get_pool_by_id_public', { 
+            p_pool_id: poolId, 
+            p_claim_token: claimToken 
+          });
+
+        if (poolError) {
+          console.error('Error fetching pool as guest:', poolError);
+          setLoading(false);
+          return;
+        }
+
+        if (poolData && poolData.length > 0) {
+          setPool(poolData[0] as PoolData);
+          setIsGuest(true);
+
+          // Get members via public function
+          const { data: membersData } = await supabase
+            .rpc('get_pool_members_public', { 
+              p_pool_id: poolId, 
+              p_claim_token: claimToken 
+            });
+
+          setMembers((membersData || []) as PoolMember[]);
+
+          // Get guest's display name
+          const { data: guestData } = await supabase
+            .rpc('get_pool_for_guest', { p_claim_token: claimToken });
+          
+          if (guestData && guestData.length > 0) {
+            setGuestDisplayName(guestData[0].display_name);
+          }
+        }
+      }
     } catch (error) {
       console.error('Error fetching pool:', error);
     } finally {
@@ -92,7 +140,7 @@ export default function Pool() {
 
   useEffect(() => {
     fetchPoolData();
-  }, [poolId]);
+  }, [poolId, user]);
 
   const copyInviteCode = () => {
     if (pool) {
@@ -121,7 +169,7 @@ export default function Pool() {
           <h1 className="text-2xl font-display text-foreground mb-2">Pool Not Found</h1>
           <p className="text-muted-foreground mb-6">This pool doesn't exist or you don't have access.</p>
           <Button asChild>
-            <Link to="/my-pools">Back to My Pools</Link>
+            <Link to="/">Back to Home</Link>
           </Button>
         </div>
       </div>
@@ -141,12 +189,36 @@ export default function Pool() {
         <div className="max-w-4xl mx-auto">
           {/* Back Link */}
           <Link 
-            to="/my-pools" 
+            to={user ? "/my-pools" : "/"} 
             className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
           >
             <ArrowLeft className="h-4 w-4 mr-1" />
-            Back to My Pools
+            {user ? 'Back to My Pools' : 'Back to Home'}
           </Link>
+
+          {/* Guest Banner */}
+          {isGuest && !user && (
+            <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium">
+                    You're viewing as: <span className="text-primary">{guestDisplayName}</span>
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Create a free account to track multiple pools and get notifications.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate('/auth')}
+                >
+                  <UserPlus className="h-4 w-4 mr-2" />
+                  Create Account
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Pool Header */}
           <div className="bg-card border border-border rounded-2xl p-6 mb-6">

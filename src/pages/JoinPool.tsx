@@ -15,10 +15,21 @@ import { getCompetition } from '@/lib/competitions';
 
 const joinSchema = z.object({
   code: z.string().trim().min(1, 'Please enter an invite code').max(20),
-  displayName: z.string().trim().min(1, 'Please enter your name').max(50).optional(),
+  displayName: z.string().trim().min(1, 'Please enter your name').max(50),
 });
 
 type JoinFormValues = z.infer<typeof joinSchema>;
+
+interface PoolDetails {
+  id: string;
+  name: string;
+  competition_key: string;
+  season: string;
+  status: string;
+  buyin_amount_cents: number | null;
+  max_players: number | null;
+  member_count: number;
+}
 
 export default function JoinPool() {
   const { code: urlCode } = useParams<{ code: string }>();
@@ -27,7 +38,7 @@ export default function JoinPool() {
   const { toast } = useToast();
   
   const [isLoading, setIsLoading] = useState(false);
-  const [pool, setPool] = useState<any>(null);
+  const [pool, setPool] = useState<PoolDetails | null>(null);
   const [lookingUp, setLookingUp] = useState(false);
   const [notFound, setNotFound] = useState(false);
 
@@ -37,6 +48,24 @@ export default function JoinPool() {
   });
 
   const codeValue = form.watch('code');
+
+  // Pre-fill display name from user profile if logged in
+  useEffect(() => {
+    if (user) {
+      supabase
+        .from('profiles')
+        .select('display_name')
+        .eq('id', user.id)
+        .single()
+        .then(({ data }) => {
+          if (data?.display_name) {
+            form.setValue('displayName', data.display_name);
+          } else if (user.email) {
+            form.setValue('displayName', user.email.split('@')[0]);
+          }
+        });
+    }
+  }, [user, form]);
 
   useEffect(() => {
     if (codeValue.length >= 6) {
@@ -50,8 +79,9 @@ export default function JoinPool() {
     setLookingUp(true);
     setNotFound(false);
     
+    // Use the new public function that doesn't require auth
     const { data, error } = await supabase
-      .rpc('lookup_pool_by_invite_code', { code });
+      .rpc('get_pool_details_by_code', { p_code: code });
     
     if (error || !data || data.length === 0) {
       setPool(null);
@@ -68,29 +98,41 @@ export default function JoinPool() {
     setIsLoading(true);
 
     try {
-      let displayName = values.displayName;
-      
       if (user) {
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('display_name')
-          .eq('id', user.id)
-          .single();
-        displayName = profile?.display_name || user.email?.split('@')[0] || 'Player';
+        // Authenticated user - use direct insert (RLS allows this)
+        const { error } = await supabase.from('pool_members').insert({
+          pool_id: pool.id,
+          user_id: user.id,
+          display_name: values.displayName,
+          role: 'member',
+          is_claimed: true,
+        });
+
+        if (error) throw error;
+
+        toast({ title: 'Joined!', description: `You've joined ${pool.name}` });
+        navigate(`/pool/${pool.id}`);
+      } else {
+        // Guest user - use the SECURITY DEFINER function
+        const { data, error } = await supabase.rpc('join_pool_as_guest', {
+          p_pool_id: pool.id,
+          p_display_name: values.displayName,
+        });
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          const { member_id, claim_token } = data[0];
+          
+          // Store claim token for guest access
+          localStorage.setItem(`pool_claim_${pool.id}`, claim_token);
+          
+          toast({ title: 'Joined!', description: `You've joined ${pool.name}` });
+          navigate(`/pool/${pool.id}`);
+        } else {
+          throw new Error('Failed to join pool');
+        }
       }
-
-      const { error } = await supabase.from('pool_members').insert({
-        pool_id: pool.id,
-        user_id: user?.id || null,
-        display_name: displayName || 'Guest',
-        role: 'member',
-        is_claimed: !!user,
-      });
-
-      if (error) throw error;
-
-      toast({ title: 'Joined!', description: `You've joined ${pool.name}` });
-      navigate(`/pool/${pool.id}`);
     } catch (error: any) {
       toast({ title: 'Error', description: error.message || 'Failed to join pool', variant: 'destructive' });
     } finally {
@@ -99,6 +141,7 @@ export default function JoinPool() {
   };
 
   const competition = pool ? getCompetition(pool.competition_key) : null;
+  const isFull = pool && pool.max_players && pool.member_count >= pool.max_players;
 
   return (
     <div className="min-h-screen bg-background">
@@ -148,13 +191,22 @@ export default function JoinPool() {
                       </div>
                     </div>
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><Users className="h-3 w-3" /> {pool.max_players} players</span>
-                      <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" /> {pool.buyin_amount_cents ? `$${pool.buyin_amount_cents/100}` : 'Free'}</span>
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" /> 
+                        {pool.member_count} / {pool.max_players || '∞'} players
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <DollarSign className="h-3 w-3" /> 
+                        {pool.buyin_amount_cents ? `$${pool.buyin_amount_cents/100}` : 'Free'}
+                      </span>
                     </div>
+                    {isFull && (
+                      <p className="text-xs text-destructive mt-2 font-medium">This pool is full</p>
+                    )}
                   </div>
                 )}
 
-                {!user && pool && (
+                {pool && !isFull && (
                   <FormField
                     control={form.control}
                     name="displayName"
@@ -168,7 +220,7 @@ export default function JoinPool() {
                   />
                 )}
 
-                <Button type="submit" className="w-full" disabled={!pool || isLoading}>
+                <Button type="submit" className="w-full" disabled={!pool || isLoading || isFull}>
                   {isLoading ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Joining...</> : 'Join Pool'}
                 </Button>
               </form>
