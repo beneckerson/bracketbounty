@@ -518,7 +518,7 @@ export type Database = {
           venmo_handle_copy: string | null
         }
         Insert: {
-          claim_token?: string | null
+          claim_token?: never
           display_name?: string | null
           guest_id?: string | null
           id?: string | null
@@ -530,7 +530,7 @@ export type Database = {
           venmo_handle_copy?: never
         }
         Update: {
-          claim_token?: string | null
+          claim_token?: never
           display_name?: string | null
           guest_id?: string | null
           id?: string | null
