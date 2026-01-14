@@ -20,7 +20,8 @@ export function Hero() {
           <img 
             src={bracketBountyLogo} 
             alt="BracketBounty" 
-            className="h-28 md:h-40 lg:h-48 w-auto mx-auto drop-shadow-lg"
+            className="h-36 md:h-52 lg:h-64 w-auto mx-auto drop-shadow-2xl hover:scale-[1.02] transition-transform duration-300"
+            style={{ filter: 'drop-shadow(0 0 30px hsl(var(--accent) / 0.3))' }}
           />
         </div>
 
