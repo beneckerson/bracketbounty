@@ -1,0 +1,285 @@
+import { useEffect, useState } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import { ArrowLeft, Users, DollarSign, Copy, Check, Settings, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Header } from '@/components/layout/Header';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
+import { getCompetition } from '@/lib/competitions';
+
+interface PoolData {
+  id: string;
+  name: string;
+  competition_key: string;
+  season: string;
+  status: 'draft' | 'lobby' | 'active' | 'completed';
+  mode: 'capture' | 'standard';
+  scoring_rule: 'straight' | 'ats';
+  buyin_amount_cents: number | null;
+  max_players: number | null;
+  teams_per_player: number | null;
+  allocation_method: 'random' | 'draft';
+  invite_code: string;
+  payout_note: string | null;
+  created_by: string | null;
+  created_at: string;
+}
+
+interface PoolMember {
+  id: string;
+  display_name: string;
+  role: 'creator' | 'member';
+  is_claimed: boolean;
+  user_id: string | null;
+  joined_at: string;
+}
+
+const statusColors: Record<string, string> = {
+  draft: 'bg-muted text-muted-foreground',
+  lobby: 'bg-yellow-500/10 text-yellow-600',
+  active: 'bg-green-500/10 text-green-600',
+  completed: 'bg-blue-500/10 text-blue-600',
+};
+
+const statusLabels: Record<string, string> = {
+  draft: 'Draft',
+  lobby: 'Waiting for Players',
+  active: 'In Progress',
+  completed: 'Completed',
+};
+
+export default function Pool() {
+  const { poolId } = useParams<{ poolId: string }>();
+  const { user } = useAuth();
+  const [pool, setPool] = useState<PoolData | null>(null);
+  const [members, setMembers] = useState<PoolMember[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const isCreator = pool?.created_by === user?.id;
+
+  useEffect(() => {
+    async function fetchPool() {
+      if (!poolId) return;
+
+      try {
+        const { data: poolData, error: poolError } = await supabase
+          .from('pools')
+          .select('*')
+          .eq('id', poolId)
+          .single();
+
+        if (poolError) throw poolError;
+        setPool(poolData);
+
+        const { data: membersData, error: membersError } = await supabase
+          .from('pool_members')
+          .select('id, display_name, role, is_claimed, user_id, joined_at')
+          .eq('pool_id', poolId)
+          .order('joined_at', { ascending: true });
+
+        if (membersError) throw membersError;
+        setMembers(membersData || []);
+      } catch (error) {
+        console.error('Error fetching pool:', error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchPool();
+  }, [poolId]);
+
+  const copyInviteCode = () => {
+    if (pool) {
+      navigator.clipboard.writeText(pool.invite_code);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center pt-32">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!pool) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="text-center pt-32">
+          <h1 className="text-2xl font-display text-foreground mb-2">Pool Not Found</h1>
+          <p className="text-muted-foreground mb-6">This pool doesn't exist or you don't have access.</p>
+          <Button asChild>
+            <Link to="/my-pools">Back to My Pools</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const competition = getCompetition(pool.competition_key);
+  const buyinDisplay = pool.buyin_amount_cents && pool.buyin_amount_cents > 0
+    ? `$${(pool.buyin_amount_cents / 100).toFixed(0)}`
+    : 'Free';
+
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+
+      <main className="pt-24 pb-12 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* Back Link */}
+          <Link 
+            to="/my-pools" 
+            className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Back to My Pools
+          </Link>
+
+          {/* Pool Header */}
+          <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
+              <div className="flex items-center gap-4">
+                <span className="text-5xl">{competition?.icon || '🏆'}</span>
+                <div>
+                  <h1 className="text-2xl font-bebas text-foreground tracking-wide">{pool.name}</h1>
+                  <p className="text-muted-foreground">
+                    {competition?.name || pool.competition_key} • {pool.season}
+                  </p>
+                </div>
+              </div>
+              <Badge className={statusColors[pool.status]}>
+                {statusLabels[pool.status]}
+              </Badge>
+            </div>
+
+            {/* Pool Info Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Mode</p>
+                <p className="font-medium capitalize">{pool.mode}</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Scoring</p>
+                <p className="font-medium">{pool.scoring_rule === 'ats' ? 'ATS' : 'Straight'}</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Buy-in</p>
+                <p className="font-medium">{buyinDisplay}</p>
+              </div>
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-xs text-muted-foreground mb-1">Allocation</p>
+                <p className="font-medium capitalize">{pool.allocation_method}</p>
+              </div>
+            </div>
+
+            {/* Invite Code (for lobby status) */}
+            {pool.status === 'lobby' && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-foreground mb-1">Invite Code</p>
+                  <p className="text-xs text-muted-foreground">Share this code with friends to join</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="text-xl font-mono font-bold tracking-widest bg-background px-4 py-2 rounded">
+                    {pool.invite_code}
+                  </code>
+                  <Button size="icon" variant="ghost" onClick={copyInviteCode}>
+                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Payout Note */}
+            {pool.payout_note && (
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-1">Payout Structure</p>
+                <p className="text-sm">{pool.payout_note}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Members Section */}
+          <div className="bg-card border border-border rounded-2xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-lg text-foreground flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Players ({members.length} / {pool.max_players || '—'})
+              </h2>
+              {isCreator && pool.status === 'lobby' && (
+                <Button variant="outline" size="sm">
+                  <Settings className="h-4 w-4 mr-2" />
+                  Manage
+                </Button>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              {members.map((member) => (
+                <div
+                  key={member.id}
+                  className="flex items-center justify-between p-3 bg-muted/50 rounded-lg"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                      <span className="text-sm font-medium text-primary">
+                        {member.display_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">{member.display_name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Joined {new Date(member.joined_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {member.role === 'creator' && (
+                      <Badge variant="outline" className="text-xs">Commissioner</Badge>
+                    )}
+                    {!member.is_claimed && (
+                      <Badge variant="secondary" className="text-xs">Guest</Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Empty slots */}
+              {pool.max_players && members.length < pool.max_players && (
+                Array.from({ length: Math.min(pool.max_players - members.length, 3) }).map((_, i) => (
+                  <div
+                    key={`empty-${i}`}
+                    className="flex items-center p-3 border border-dashed border-border rounded-lg text-muted-foreground"
+                  >
+                    <div className="w-8 h-8 rounded-full border border-dashed border-border mr-3" />
+                    <span className="text-sm">Waiting for player...</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Bracket placeholder for active/completed pools */}
+          {(pool.status === 'active' || pool.status === 'completed') && (
+            <div className="bg-card border border-border rounded-2xl p-6 mt-6">
+              <h2 className="font-display text-lg text-foreground mb-4">Bracket</h2>
+              <div className="bg-muted/50 rounded-lg p-8 text-center">
+                <p className="text-muted-foreground">Bracket view coming soon</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
