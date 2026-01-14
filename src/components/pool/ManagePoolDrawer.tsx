@@ -88,9 +88,9 @@ export function ManagePoolDrawer({
       toast.success(`${guestName} added to pool`);
       setGuestName('');
       onMembersChange();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding guest:', error);
-      toast.error('Failed to add guest');
+      toast.error(error?.message || 'Failed to add guest');
     } finally {
       setAddingGuest(false);
     }
@@ -202,9 +202,12 @@ export function ManagePoolDrawer({
                 <UserPlus className="h-4 w-4" />
                 Add Guest Player
               </h3>
+              <p className="text-xs text-muted-foreground">
+                Add a placeholder for someone who hasn't signed up yet. They can claim their spot later.
+              </p>
               <div className="flex gap-2">
                 <Input
-                  placeholder="Guest name..."
+                  placeholder="Enter guest's name..."
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
                   disabled={!canAddPlayer || addingGuest}
