@@ -2,8 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Fugaz+One&family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap');
-
 @layer base {
   :root {
     /* Core palette - BracketBounty brand colors */
