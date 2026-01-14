@@ -46,41 +46,47 @@ export const competitionConfigs: Record<string, CompetitionConfig> = {
   },
 };
 
-// Demo participants with varied avatar types
+// Demo participants - 8 players for CFP pool
 export const demoParticipants: Participant[] = [
-  { id: 'p1', displayName: 'Ben Edwards', initials: 'BE', avatarUrl: 'https://i.pravatar.cc/150?u=ben', venmoHandle: '@ben-edwards', isClaimed: true },
-  { id: 'p2', displayName: 'Sarah Miller', initials: 'SM', avatarUrl: 'https://i.pravatar.cc/150?u=sarah', venmoHandle: '@sarahm', isClaimed: true },
-  { id: 'p3', displayName: 'Jake Davidson', initials: 'JD', venmoHandle: '@jakedavidson', isClaimed: true },
-  { id: 'p4', displayName: 'Mike Chen', initials: 'MC', avatarUrl: 'https://i.pravatar.cc/150?u=mike', isClaimed: false },
-  { id: 'p5', displayName: 'Emily Ross', initials: 'ER', avatarUrl: 'https://i.pravatar.cc/150?u=emily', venmoHandle: '@emilyross', isClaimed: true },
-  { id: 'p6', displayName: 'Chris Taylor', initials: 'CT', isClaimed: false },
-  { id: 'p7', displayName: 'Jordan Lee', initials: 'JL', avatarUrl: 'https://i.pravatar.cc/150?u=jordan', venmoHandle: '@jordanlee', isClaimed: true },
-  { id: 'p8', displayName: 'Alex Kim', initials: 'AK', venmoHandle: '@alexkim', isClaimed: true },
+  { id: 'p1', displayName: 'Ben', initials: 'BE', avatarUrl: 'https://i.pravatar.cc/150?u=ben', venmoHandle: '@ben-edwards', isClaimed: true },
+  { id: 'p2', displayName: 'Sean', initials: 'SE', avatarUrl: 'https://i.pravatar.cc/150?u=sean', venmoHandle: '@seanm', isClaimed: true },
+  { id: 'p3', displayName: 'Rich', initials: 'RL', venmoHandle: '@richlee', isClaimed: true },
+  { id: 'p4', displayName: 'Johnson', initials: 'JO', avatarUrl: 'https://i.pravatar.cc/150?u=johnson', isClaimed: true },
+  { id: 'p5', displayName: 'Skilone', initials: 'SK', avatarUrl: 'https://i.pravatar.cc/150?u=skilone', venmoHandle: '@skilone', isClaimed: true },
+  { id: 'p6', displayName: 'JMB', initials: 'JM', avatarUrl: 'https://i.pravatar.cc/150?u=jmb', isClaimed: true },
+  { id: 'p7', displayName: 'B Hart', initials: 'BH', venmoHandle: '@bhart', isClaimed: true },
+  { id: 'p8', displayName: 'Kool', initials: 'KO', avatarUrl: 'https://i.pravatar.cc/150?u=kool', venmoHandle: '@kool', isClaimed: true },
 ];
 
-// Demo teams for CFP
+// Demo teams for CFP - using actual 2026 CFP teams with correct seeds
 export const cfpTeams: Team[] = [
-  { code: 'IND', name: 'Indiana', abbreviation: 'IND', seed: 1, color: 'team-red' },
-  { code: 'ORE', name: 'Oregon', abbreviation: 'ORE', seed: 2, color: 'team-green' },
-  { code: 'BAMA', name: 'Alabama', abbreviation: 'BAMA', seed: 3, color: 'team-red' },
+  { code: 'IND', name: 'Indiana', abbreviation: 'IND', seed: 1, color: 'team-crimson' },
+  { code: 'OSU', name: 'Ohio State', abbreviation: 'OSU', seed: 2, color: 'team-scarlet' },
+  { code: 'UGA', name: 'Georgia', abbreviation: 'UGA', seed: 3, color: 'team-red' },
   { code: 'TTU', name: 'Texas Tech', abbreviation: 'TTU', seed: 4, color: 'team-red' },
-  { code: 'UGA', name: 'Georgia', abbreviation: 'UGA', seed: 5, color: 'team-red' },
-  { code: 'TAMU', name: 'Texas A&M', abbreviation: 'TAMU', seed: 6, color: 'team-orange' },
-  { code: 'MIAMI', name: 'Miami', abbreviation: 'MIAMI', seed: 7, color: 'team-orange' },
-  { code: 'OSU', name: 'Ohio State', abbreviation: 'OSU', seed: 8, color: 'team-red' },
+  { code: 'ORE', name: 'Oregon', abbreviation: 'ORE', seed: 5, color: 'team-green' },
+  { code: 'MISS', name: 'Ole Miss', abbreviation: 'MISS', seed: 6, color: 'team-navy' },
+  { code: 'BAMA', name: 'Alabama', abbreviation: 'BAMA', seed: 9, color: 'team-crimson' },
+  { code: 'MIAMI', name: 'Miami', abbreviation: 'MIAMI', seed: 10, color: 'team-orange' },
 ];
 
-// Demo pool with capture mode showing ownership changes
-// In Capture Mode with ATS scoring:
-// - Favorites must cover the spread to advance and capture the opponent's team
-// - Underdogs can capture the favorite's team if they cover the spread (even if they lose outright)
+// Helper to get team by code
+function getTeam(code: string): Team {
+  return cfpTeams.find(t => t.code === code)!;
+}
+
+// Demo pool with capture mode showing real 2026 CFP results
+// Capture Mode with ATS scoring:
+// - The participant whose team COVERS the spread wins the matchup
+// - Winner captures ALL teams from the losing participant
+// - "CAPTURED" chip shown when underdog covers (upset in ATS terms)
 export const demoCapturePool: Pool = {
   id: 'pool-1',
   name: "Gamblin' Boys 2026 CFP",
   competitionKey: 'cfp',
   season: '2025-2026',
   mode: 'capture',
-  scoringRule: 'ats', // Capture mode uses ATS (against the spread)
+  scoringRule: 'ats',
   status: 'active',
   buyinAmountCents: 5000,
   currency: 'USD',
@@ -90,32 +96,25 @@ export const demoCapturePool: Pool = {
   inviteCode: 'GBCFP26',
   createdBy: 'p1',
   members: [
-    // Ben Edwards - Had Indiana, covered in QF, but failed to cover in SF vs Alabama
-    { id: 'm1', participant: demoParticipants[0], role: 'creator', ownedTeams: [] },
-    // Sarah Miller - Had Oregon, lost to Indiana in QF (Indiana covered -10.5)
+    // Ben → IND - Covered in QF, covered in SF → Still Active with IND
+    { id: 'm1', participant: demoParticipants[0], role: 'creator', ownedTeams: [
+      { teamCode: 'IND', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
+    ]},
+    // Sean → OSU - Failed to cover in QF vs Miami → Eliminated
     { id: 'm2', participant: demoParticipants[1], role: 'member', ownedTeams: [] },
-    // Jake Davidson - Had Alabama, failed to cover in QF, captured by Texas Tech
+    // Rich → UGA - Failed to cover in QF vs Ole Miss → Eliminated
     { id: 'm3', participant: demoParticipants[2], role: 'member', ownedTeams: [] },
-    // Mike Chen - Had Texas Tech, covered +6.5 in QF, now owns BAMA. Later beat IND in SF.
-    { id: 'm4', participant: demoParticipants[3], role: 'member', ownedTeams: [
-      { teamCode: 'TTU', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
-      { teamCode: 'BAMA', acquiredVia: 'capture', fromMatchupId: 'match-qf-2', acquiredAt: new Date('2025-12-21') },
-      { teamCode: 'IND', acquiredVia: 'capture', fromMatchupId: 'match-sf-1', acquiredAt: new Date('2026-01-02') },
-      { teamCode: 'ORE', acquiredVia: 'capture', fromMatchupId: 'match-sf-1', acquiredAt: new Date('2026-01-02') },
-    ]},
-    // Emily Ross - Had Georgia, covered in QF
-    { id: 'm5', participant: demoParticipants[4], role: 'member', ownedTeams: [
-      { teamCode: 'UGA', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
-      { teamCode: 'TAMU', acquiredVia: 'capture', fromMatchupId: 'match-qf-3', acquiredAt: new Date('2025-12-21') },
-    ]},
-    // Chris Taylor - Had Texas A&M, failed to cover +3.5 in QF
+    // Johnson → TTU - Failed to cover in QF vs Oregon → Eliminated
+    { id: 'm4', participant: demoParticipants[3], role: 'member', ownedTeams: [] },
+    // Skilone → ORE - Covered in QF, failed to cover in SF vs Indiana → Eliminated
+    { id: 'm5', participant: demoParticipants[4], role: 'member', ownedTeams: [] },
+    // JMB → MISS - Covered (captured) in QF, failed to cover in SF vs Miami → Eliminated
     { id: 'm6', participant: demoParticipants[5], role: 'member', ownedTeams: [] },
-    // Jordan Lee - Had Miami, failed to cover -2.5 in QF, captured by Ohio State
+    // B Hart → BAMA - Failed to cover in QF vs Indiana → Eliminated
     { id: 'm7', participant: demoParticipants[6], role: 'member', ownedTeams: [] },
-    // Alex Kim - Had Ohio State, covered +2.5 (won outright) in QF, captured Miami
+    // Kool → MIAMI - Covered (captured) in QF, covered (captured) in SF → Still Active with MIAMI
     { id: 'm8', participant: demoParticipants[7], role: 'member', ownedTeams: [
-      { teamCode: 'OSU', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
-      { teamCode: 'MIAMI', acquiredVia: 'capture', fromMatchupId: 'match-qf-4', acquiredAt: new Date('2025-12-21') },
+      { teamCode: 'MIAMI', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
     ]},
   ],
   rounds: [
@@ -126,63 +125,63 @@ export const demoCapturePool: Pool = {
       order: 1,
       matchups: [
         {
-          // QF-1: #1 Indiana (-10.5) vs #2 Oregon (+10.5)
-          // Result: IND 42 - ORE 28 (IND wins by 14, covers -10.5)
-          // Outcome: Ben Edwards (IND) covers, captures Oregon from Sarah Miller
+          // QF-1: (10) MIAMI +9.5 vs (2) OHIO STATE -9.5
+          // Result: MIAMI 24 - OSU 14 (Miami wins by 10, covers +9.5 as underdog)
+          // Outcome: Kool (MIAMI) covers as underdog → CAPTURED chip shown, Kool retains MIAMI
           id: 'match-qf-1',
           roundId: 'round-qf',
           eventId: 'evt-1',
-          teamA: { team: cfpTeams[0], ownerId: 'm1', score: 42, spread: -10.5 },
-          teamB: { team: cfpTeams[1], ownerId: 'm2', score: 28, spread: 10.5 },
+          teamA: { team: getTeam('MIAMI'), ownerId: 'm8', score: 24, spread: 9.5 },
+          teamB: { team: getTeam('OSU'), ownerId: 'm2', score: 14, spread: -9.5 },
           status: 'final',
-          winnerId: 'm1',
-          winnerTeamCode: 'IND',
-          capturedTeams: ['ORE'],
+          winnerId: 'm8',
+          winnerTeamCode: 'MIAMI',
+          capturedTeams: ['OSU'],
           decidedBy: 'ats',
         },
         {
-          // QF-2: #3 Alabama (-6.5) vs #4 Texas Tech (+6.5)
-          // Result: BAMA 31 - TTU 28 (BAMA wins by 3, FAILS to cover -6.5)
-          // Outcome: Mike Chen (TTU) covers +6.5, captures Alabama from Jake Davidson
+          // QF-2: (5) OREGON -2.5 vs (4) TEXAS TECH +2.5
+          // Result: ORE 23 - TTU 0 (Oregon wins by 23, covers -2.5 as favorite)
+          // Outcome: Skilone (ORE) covers as favorite → No CAPTURED chip, Skilone retains ORE
           id: 'match-qf-2',
           roundId: 'round-qf',
           eventId: 'evt-2',
-          teamA: { team: cfpTeams[2], ownerId: 'm3', score: 31, spread: -6.5 },
-          teamB: { team: cfpTeams[3], ownerId: 'm4', score: 28, spread: 6.5 },
+          teamA: { team: getTeam('ORE'), ownerId: 'm5', score: 23, spread: -2.5 },
+          teamB: { team: getTeam('TTU'), ownerId: 'm4', score: 0, spread: 2.5 },
           status: 'final',
-          winnerId: 'm4', // TTU owner wins (covered spread)
-          winnerTeamCode: 'TTU',
+          winnerId: 'm5',
+          winnerTeamCode: 'ORE',
+          capturedTeams: ['TTU'],
+          decidedBy: 'ats',
+        },
+        {
+          // QF-3: (1) INDIANA -7.0 vs (9) ALABAMA +7.0
+          // Result: IND 38 - BAMA 3 (Indiana wins by 35, covers -7.0 as favorite)
+          // Outcome: Ben (IND) covers as favorite → No CAPTURED chip, Ben retains IND
+          id: 'match-qf-3',
+          roundId: 'round-qf',
+          eventId: 'evt-3',
+          teamA: { team: getTeam('IND'), ownerId: 'm1', score: 38, spread: -7.0 },
+          teamB: { team: getTeam('BAMA'), ownerId: 'm7', score: 3, spread: 7.0 },
+          status: 'final',
+          winnerId: 'm1',
+          winnerTeamCode: 'IND',
           capturedTeams: ['BAMA'],
           decidedBy: 'ats',
         },
         {
-          // QF-3: #5 Georgia (-3.5) vs #6 Texas A&M (+3.5)
-          // Result: UGA 35 - TAMU 21 (UGA wins by 14, covers -3.5)
-          // Outcome: Emily Ross (UGA) covers, captures TAMU from Chris Taylor
-          id: 'match-qf-3',
-          roundId: 'round-qf',
-          eventId: 'evt-3',
-          teamA: { team: cfpTeams[4], ownerId: 'm5', score: 35, spread: -3.5 },
-          teamB: { team: cfpTeams[5], ownerId: 'm6', score: 21, spread: 3.5 },
-          status: 'final',
-          winnerId: 'm5',
-          winnerTeamCode: 'UGA',
-          capturedTeams: ['TAMU'],
-          decidedBy: 'ats',
-        },
-        {
-          // QF-4: #7 Miami (-2.5) vs #8 Ohio State (+2.5)
-          // Result: MIAMI 27 - OSU 38 (OSU wins outright by 11, covers +2.5)
-          // Outcome: Alex Kim (OSU) wins outright as underdog, captures Miami from Jordan Lee
+          // QF-4: (6) OLE MISS +6.5 vs (3) GEORGIA -6.5
+          // Result: MISS 39 - UGA 34 (Ole Miss wins by 5, covers +6.5 as underdog)
+          // Outcome: JMB (MISS) covers as underdog → CAPTURED chip shown, JMB retains MISS
           id: 'match-qf-4',
           roundId: 'round-qf',
           eventId: 'evt-4',
-          teamA: { team: cfpTeams[6], ownerId: 'm7', score: 27, spread: -2.5 },
-          teamB: { team: cfpTeams[7], ownerId: 'm8', score: 38, spread: 2.5 },
+          teamA: { team: getTeam('MISS'), ownerId: 'm6', score: 39, spread: 6.5 },
+          teamB: { team: getTeam('UGA'), ownerId: 'm3', score: 34, spread: -6.5 },
           status: 'final',
-          winnerId: 'm8', // OSU owner wins (won outright as underdog)
-          winnerTeamCode: 'OSU',
-          capturedTeams: ['MIAMI'],
+          winnerId: 'm6',
+          winnerTeamCode: 'MISS',
+          capturedTeams: ['UGA'],
           decidedBy: 'ats',
         },
       ],
@@ -194,31 +193,35 @@ export const demoCapturePool: Pool = {
       order: 2,
       matchups: [
         {
-          // SF-1: #1 Indiana (-4.5) vs #4 Texas Tech (+4.5)
-          // TTU now owned by Mike Chen (who also has BAMA from QF capture)
-          // Result: IND 28 - TTU 35 (TTU wins outright by 7, covers +4.5)
-          // Outcome: Mike Chen (TTU) covers, captures IND and ORE from Ben Edwards
+          // SF-1: (10) MIAMI -3.5 vs (6) OLE MISS +3.5
+          // Result: MIAMI 31 - MISS 27 (Miami wins by 4, covers -3.5 as favorite)
+          // But Miami is the lower seed playing as favorite → CAPTURED chip shown
+          // Outcome: Kool (MIAMI) covers, retains MIAMI
           id: 'match-sf-1',
           roundId: 'round-sf',
           eventId: 'evt-5',
-          teamA: { team: cfpTeams[0], ownerId: 'm1', score: 28, spread: -4.5 },
-          teamB: { team: cfpTeams[3], ownerId: 'm4', score: 35, spread: 4.5 },
+          teamA: { team: getTeam('MIAMI'), ownerId: 'm8', score: 31, spread: -3.5 },
+          teamB: { team: getTeam('MISS'), ownerId: 'm6', score: 27, spread: 3.5 },
           status: 'final',
-          winnerId: 'm4',
-          winnerTeamCode: 'TTU',
-          capturedTeams: ['IND', 'ORE'],
+          winnerId: 'm8',
+          winnerTeamCode: 'MIAMI',
+          capturedTeams: ['MISS'],
           decidedBy: 'ats',
         },
         {
-          // SF-2: #5 Georgia (-1.5) vs #8 Ohio State (+1.5)
-          // OSU now owned by Alex Kim (who also has MIAMI from QF capture)
+          // SF-2: (1) INDIANA -3.5 vs (5) OREGON +3.5
+          // Result: IND 56 - ORE 22 (Indiana wins by 34, covers -3.5 as favorite)
+          // Outcome: Ben (IND) covers as favorite → No CAPTURED chip, Ben retains IND
           id: 'match-sf-2',
           roundId: 'round-sf',
           eventId: 'evt-6',
-          teamA: { team: cfpTeams[4], ownerId: 'm5', spread: -1.5 },
-          teamB: { team: cfpTeams[7], ownerId: 'm8', spread: 1.5 },
-          status: 'upcoming',
-          startTime: new Date('2026-01-15T20:00:00'),
+          teamA: { team: getTeam('IND'), ownerId: 'm1', score: 56, spread: -3.5 },
+          teamB: { team: getTeam('ORE'), ownerId: 'm5', score: 22, spread: 3.5 },
+          status: 'final',
+          winnerId: 'm1',
+          winnerTeamCode: 'IND',
+          capturedTeams: ['ORE'],
+          decidedBy: 'ats',
         },
       ],
     },
@@ -229,12 +232,15 @@ export const demoCapturePool: Pool = {
       order: 3,
       matchups: [
         {
+          // Final: (1) INDIANA -7.5 vs (10) MIAMI +7.5
+          // Status: Upcoming
           id: 'match-final',
           roundId: 'round-final',
           eventId: 'evt-7',
-          teamA: { team: cfpTeams[3], ownerId: 'm4' }, // TTU advances from SF-1
-          teamB: { team: { code: 'TBD', name: 'TBD', abbreviation: 'TBD', seed: 0, color: 'team-navy' }, ownerId: '' },
+          teamA: { team: getTeam('IND'), ownerId: 'm1', spread: -7.5 },
+          teamB: { team: getTeam('MIAMI'), ownerId: 'm8', spread: 7.5 },
           status: 'upcoming',
+          startTime: new Date('2026-01-20T20:00:00'),
         },
       ],
     },
@@ -248,40 +254,48 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'capture',
-    description: 'Indiana (-10.5) covered the spread. Ben Edwards captured Oregon from Sarah Miller.',
-    createdAt: new Date('2025-12-21T18:45:00'),
+    description: 'Miami (+9.5) won outright, covering the spread. Kool captured Ohio State from Sean.',
+    createdAt: new Date('2025-12-31T20:00:00'),
   },
   {
     id: 'log-2',
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'capture',
-    description: 'Texas Tech (+6.5) covered the spread. Mike Chen captured Alabama from Jake Davidson.',
-    createdAt: new Date('2025-12-21T21:30:00'),
+    description: 'Oregon (-2.5) covered the spread. Skilone captured Texas Tech from Johnson.',
+    createdAt: new Date('2025-12-31T23:30:00'),
   },
   {
     id: 'log-3',
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'capture',
-    description: 'Georgia (-3.5) covered the spread. Emily Ross captured Texas A&M from Chris Taylor.',
-    createdAt: new Date('2025-12-22T15:20:00'),
+    description: 'Indiana (-7.0) covered the spread. Ben captured Alabama from B Hart.',
+    createdAt: new Date('2026-01-01T17:00:00'),
   },
   {
     id: 'log-4',
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'capture',
-    description: 'Ohio State (+2.5) won outright, covering the spread. Alex Kim captured Miami from Jordan Lee.',
-    createdAt: new Date('2025-12-22T19:00:00'),
+    description: 'Ole Miss (+6.5) won outright, covering the spread. JMB captured Georgia from Rich.',
+    createdAt: new Date('2026-01-01T20:30:00'),
   },
   {
     id: 'log-5',
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'capture',
-    description: 'Texas Tech (+4.5) won outright, covering the spread. Mike Chen captured Indiana and Oregon from Ben Edwards.',
-    createdAt: new Date('2026-01-02T22:15:00'),
+    description: 'Miami (-3.5) covered the spread. Kool captured Ole Miss from JMB.',
+    createdAt: new Date('2026-01-09T20:00:00'),
+  },
+  {
+    id: 'log-6',
+    poolId: 'pool-1',
+    actorName: 'System',
+    actionType: 'capture',
+    description: 'Indiana (-3.5) covered the spread. Ben captured Oregon from Skilone.',
+    createdAt: new Date('2026-01-09T23:30:00'),
   },
 ];
 
