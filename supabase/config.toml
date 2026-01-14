@@ -1,1 +1,10 @@
 project_id = "ojxrevoepfcypcvaedjy"
+
+[functions.sync-odds]
+verify_jwt = false
+
+[functions.lock-lines]
+verify_jwt = false
+
+[functions.resolve-matchup]
+verify_jwt = false
