@@ -5,7 +5,7 @@ import bracketBountyLogo from '@/assets/bracketbounty-logo.png';
 
 export function Hero() {
   return (
-    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden">
+    <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden pt-16">
       {/* Background gradient - navy to white */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
       
