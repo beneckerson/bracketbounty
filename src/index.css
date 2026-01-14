@@ -2,95 +2,112 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
-*/
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap');
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Core palette - sports authority meets modern product */
+    --background: 220 14% 96%;
+    --foreground: 222 47% 11%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 222 47% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 222 47% 11%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Deep navy - primary brand */
+    --primary: 210 60% 25%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Light slate for secondary surfaces */
+    --secondary: 214 32% 91%;
+    --secondary-foreground: 222 47% 11%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    --muted: 220 14% 90%;
+    --muted-foreground: 215 16% 47%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Warm amber accent */
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 210 60% 25%;
 
-    --radius: 0.5rem;
+    --radius: 1rem;
+
+    /* Custom tokens for bracket UI */
+    --bracket-line: 215 25% 27%;
+    --bracket-line-width: 3px;
+    
+    --seed-badge-bg: 222 47% 11%;
+    --seed-badge-text: 0 0% 100%;
+    
+    --winner-highlight: 142 71% 45%;
+    --capture-badge: 280 67% 52%;
+    --live-indicator: 0 84% 60%;
+    --upcoming-indicator: 210 60% 25%;
+
+    /* Team bar colors (muted versions) */
+    --team-red: 0 65% 45%;
+    --team-blue: 210 70% 40%;
+    --team-green: 142 55% 35%;
+    --team-orange: 25 80% 50%;
+    --team-purple: 280 55% 45%;
+    --team-gold: 45 80% 45%;
+    --team-navy: 220 50% 25%;
+    --team-teal: 175 60% 35%;
+
+    /* Shadows */
+    --shadow-card: 0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.12);
+    --shadow-card-hover: 0 4px 12px -2px rgba(0, 0, 0, 0.12), 0 8px 24px -4px rgba(0, 0, 0, 0.16);
+    --shadow-matchup: 0 1px 4px rgba(0, 0, 0, 0.06), 0 2px 8px rgba(0, 0, 0, 0.08);
 
     --sidebar-background: 0 0% 98%;
-
     --sidebar-foreground: 240 5.3% 26.1%;
-
     --sidebar-primary: 240 5.9% 10%;
-
     --sidebar-primary-foreground: 0 0% 98%;
-
     --sidebar-accent: 240 4.8% 95.9%;
-
     --sidebar-accent-foreground: 240 5.9% 10%;
-
     --sidebar-border: 220 13% 91%;
-
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
+    --background: 222 47% 8%;
     --foreground: 210 40% 98%;
 
-    --card: 222.2 84% 4.9%;
+    --card: 222 47% 11%;
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    --popover: 222 47% 11%;
     --popover-foreground: 210 40% 98%;
 
     --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-foreground: 222 47% 11%;
 
-    --secondary: 217.2 32.6% 17.5%;
+    --secondary: 217 33% 17%;
     --secondary-foreground: 210 40% 98%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --accent: 38 92% 50%;
+    --accent-foreground: 0 0% 100%;
 
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 63% 31%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 212 27% 84%;
+
+    --bracket-line: 215 25% 60%;
+    --shadow-card: 0 2px 8px -2px rgba(0, 0, 0, 0.3), 0 4px 16px -4px rgba(0, 0, 0, 0.4);
   }
 }
 
@@ -100,6 +117,127 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
   }
+
+  h1, h2, h3, .font-display {
+    font-family: 'Bebas Neue', system-ui, sans-serif;
+    letter-spacing: 0.02em;
+  }
+}
+
+@layer components {
+  /* Matchup card styling */
+  .matchup-card {
+    @apply bg-card rounded-2xl overflow-hidden;
+    box-shadow: var(--shadow-matchup);
+    transition: box-shadow 0.2s ease, transform 0.2s ease;
+  }
+
+  .matchup-card:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-1px);
+  }
+
+  /* Team row within matchup */
+  .team-row {
+    @apply flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-b-0;
+  }
+
+  .team-row.winner {
+    @apply bg-gradient-to-r from-green-50 to-transparent;
+  }
+
+  /* Seed badge */
+  .seed-badge {
+    @apply w-6 h-6 flex items-center justify-center rounded text-xs font-bold;
+    background: hsl(var(--seed-badge-bg));
+    color: hsl(var(--seed-badge-text));
+  }
+
+  /* Team name bar */
+  .team-bar {
+    @apply px-3 py-1 rounded-md font-semibold text-sm text-white truncate;
+    min-width: 80px;
+    max-width: 120px;
+  }
+
+  /* Avatar styles */
+  .owner-avatar {
+    @apply w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold;
+    background: linear-gradient(135deg, hsl(var(--muted)) 0%, hsl(var(--secondary)) 100%);
+    color: hsl(var(--muted-foreground));
+  }
+
+  .owner-avatar.has-image {
+    @apply bg-cover bg-center;
+  }
+
+  /* Status badges */
+  .status-badge {
+    @apply px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-badge.live {
+    @apply bg-red-100 text-red-700;
+    animation: pulse 2s infinite;
+  }
+
+  .status-badge.final {
+    @apply bg-muted text-muted-foreground;
+  }
+
+  .status-badge.upcoming {
+    @apply bg-primary/10 text-primary;
+  }
+
+  /* Capture badge */
+  .capture-badge {
+    @apply px-2 py-0.5 rounded-full text-xs font-bold uppercase tracking-wide;
+    background: hsl(var(--capture-badge));
+    color: white;
+  }
+
+  /* Bracket connector lines */
+  .bracket-line {
+    stroke: hsl(var(--bracket-line));
+    stroke-width: var(--bracket-line-width);
+    fill: none;
+  }
+
+  /* Round tabs */
+  .round-tab {
+    @apply px-4 py-2 text-sm font-medium transition-colors relative;
+    color: hsl(var(--muted-foreground));
+  }
+
+  .round-tab.active {
+    color: hsl(var(--foreground));
+  }
+
+  .round-tab.active::after {
+    content: '';
+    @apply absolute bottom-0 left-0 right-0 h-0.5 rounded-full;
+    background: hsl(var(--primary));
+  }
+
+  /* Owned teams pills */
+  .owned-team-pill {
+    @apply px-2 py-1 rounded-full text-xs font-medium inline-flex items-center gap-1;
+    background: hsl(var(--secondary));
+    color: hsl(var(--secondary-foreground));
+  }
+}
+
+@layer utilities {
+  .text-display {
+    font-family: 'Bebas Neue', system-ui, sans-serif;
+    letter-spacing: 0.02em;
+  }
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
 }
