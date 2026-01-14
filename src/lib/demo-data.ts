@@ -48,7 +48,7 @@ export const competitionConfigs: Record<string, CompetitionConfig> = {
 
 // Demo participants - 8 players for CFP pool
 export const demoParticipants: Participant[] = [
-  { id: 'p1', displayName: 'Ben', initials: 'BE', avatarUrl: 'https://i.pravatar.cc/150?u=ben', venmoHandle: '@ben-edwards', isClaimed: true },
+  { id: 'p1', displayName: 'Ben', initials: 'BE', venmoHandle: '@ben-edwards', isClaimed: true },
   { id: 'p2', displayName: 'Sean', initials: 'SE', avatarUrl: 'https://i.pravatar.cc/150?u=sean', venmoHandle: '@seanm', isClaimed: true },
   { id: 'p3', displayName: 'Rich', initials: 'RL', venmoHandle: '@richlee', isClaimed: true },
   { id: 'p4', displayName: 'Johnson', initials: 'JO', avatarUrl: 'https://i.pravatar.cc/150?u=johnson', isClaimed: true },
