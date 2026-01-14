@@ -38,14 +38,18 @@ export function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <Button size="lg" className="gap-2 px-8 h-14 text-lg bg-primary hover:bg-primary/90 shadow-lg">
-            <Trophy className="w-5 h-5" />
-            Create a Pool
-            <ArrowRight className="w-4 h-4" />
+          <Button asChild size="lg" className="gap-2 px-8 h-14 text-lg bg-primary hover:bg-primary/90 shadow-lg">
+            <Link to="/create-pool">
+              <Trophy className="w-5 h-5" />
+              Create a Pool
+              <ArrowRight className="w-4 h-4" />
+            </Link>
           </Button>
-          <Button size="lg" variant="outline" className="gap-2 px-8 h-14 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-            <Users className="w-5 h-5" />
-            Join with Code
+          <Button asChild size="lg" variant="outline" className="gap-2 px-8 h-14 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
+            <Link to="/join">
+              <Users className="w-5 h-5" />
+              Join with Code
+            </Link>
           </Button>
         </div>
 
