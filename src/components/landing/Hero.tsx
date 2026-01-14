@@ -63,22 +63,6 @@ export function Hero() {
           <ArrowRight className="w-4 h-4" />
         </Link>
 
-        {/* Feature pills with brand colors */}
-        <div className="flex flex-wrap items-center justify-center gap-3 mt-12 animate-fade-in" style={{ animationDelay: '500ms' }}>
-          {[
-            { icon: Trophy, label: 'NFL & NBA Playoffs', color: 'text-accent' },
-            { icon: Sparkles, label: 'Capture Mode', color: 'text-brand-green' },
-            { icon: Users, label: 'Private Pools', color: 'text-primary' },
-          ].map((feature) => (
-            <div 
-              key={feature.label}
-              className="flex items-center gap-2 px-4 py-2 bg-card rounded-full shadow-matchup border border-border"
-            >
-              <feature.icon className={`w-4 h-4 ${feature.color}`} />
-              <span className="text-sm font-medium text-foreground">{feature.label}</span>
-            </div>
-          ))}
-        </div>
       </div>
     </section>
   );
