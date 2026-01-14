@@ -188,6 +188,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ownership_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ownership_pool_id_fkey"
             columns: ["pool_id"]
             isOneToOne: false
@@ -249,10 +256,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "pool_matchups_participant_a_member_id_fkey"
+            columns: ["participant_a_member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members_safe"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pool_matchups_participant_b_member_id_fkey"
             columns: ["participant_b_member_id"]
             isOneToOne: false
             referencedRelation: "pool_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_matchups_participant_b_member_id_fkey"
+            columns: ["participant_b_member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members_safe"
             referencedColumns: ["id"]
           },
           {
@@ -274,6 +295,13 @@ export type Database = {
             columns: ["winner_member_id"]
             isOneToOne: false
             referencedRelation: "pool_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pool_matchups_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members_safe"
             referencedColumns: ["id"]
           },
         ]
@@ -375,6 +403,7 @@ export type Database = {
           season: string
           status: Database["public"]["Enums"]["pool_status"]
           teams_per_player: number | null
+          winner_member_id: string | null
         }
         Insert: {
           allocation_method?: Database["public"]["Enums"]["allocation_method"]
@@ -393,6 +422,7 @@ export type Database = {
           season: string
           status?: Database["public"]["Enums"]["pool_status"]
           teams_per_player?: number | null
+          winner_member_id?: string | null
         }
         Update: {
           allocation_method?: Database["public"]["Enums"]["allocation_method"]
@@ -411,8 +441,24 @@ export type Database = {
           season?: string
           status?: Database["public"]["Enums"]["pool_status"]
           teams_per_player?: number | null
+          winner_member_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pools_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pools_winner_member_id_fkey"
+            columns: ["winner_member_id"]
+            isOneToOne: false
+            referencedRelation: "pool_members_safe"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -458,7 +504,71 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      pool_members_safe: {
+        Row: {
+          claim_token: string | null
+          display_name: string | null
+          guest_id: string | null
+          id: string | null
+          is_claimed: boolean | null
+          joined_at: string | null
+          pool_id: string | null
+          role: Database["public"]["Enums"]["member_role"] | null
+          user_id: string | null
+          venmo_handle_copy: string | null
+        }
+        Insert: {
+          claim_token?: string | null
+          display_name?: string | null
+          guest_id?: string | null
+          id?: string | null
+          is_claimed?: boolean | null
+          joined_at?: string | null
+          pool_id?: string | null
+          role?: Database["public"]["Enums"]["member_role"] | null
+          user_id?: string | null
+          venmo_handle_copy?: never
+        }
+        Update: {
+          claim_token?: string | null
+          display_name?: string | null
+          guest_id?: string | null
+          id?: string | null
+          is_claimed?: boolean | null
+          joined_at?: string | null
+          pool_id?: string | null
+          role?: Database["public"]["Enums"]["member_role"] | null
+          user_id?: string | null
+          venmo_handle_copy?: never
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pool_members_pool_id_fkey"
+            columns: ["pool_id"]
+            isOneToOne: false
+            referencedRelation: "pools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles_public: {
+        Row: {
+          created_at: string | null
+          display_name: string | null
+          id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          display_name?: string | null
+          id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       can_manage_line: {
@@ -478,6 +588,10 @@ export type Database = {
       }
       is_pool_member: {
         Args: { _pool_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_venmo_visible: {
+        Args: { _member_id: string; _pool_id: string }
         Returns: boolean
       }
     }
