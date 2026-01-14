@@ -44,13 +44,18 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
   
   const isTeamAWinner = matchup.winnerId === matchup.teamA.ownerId;
   const isTeamBWinner = matchup.winnerId === matchup.teamB.ownerId;
-  const hasCaptured = showCapture && pool.mode === 'capture' && matchup.capturedTeams && matchup.capturedTeams.length > 0;
   
   // ATS (spread) logic
   const isAtsMode = pool.scoringRule === 'ats';
   const teamACovered = didCoverSpread(matchup.teamA.score, matchup.teamB.score, matchup.teamA.spread);
   const teamBCovered = didCoverSpread(matchup.teamB.score, matchup.teamA.score, matchup.teamB.spread);
   const isFinal = matchup.status === 'final';
+  
+  // "CAPTURED" chip shows when the underdog covers (winner had a positive spread)
+  // This represents an "upset" in ATS terms - the underdog covered and captures the favorite
+  const winnerSpread = isTeamAWinner ? matchup.teamA.spread : (isTeamBWinner ? matchup.teamB.spread : undefined);
+  const wasUnderdogCover = winnerSpread !== undefined && winnerSpread > 0;
+  const hasCaptured = showCapture && pool.mode === 'capture' && isFinal && matchup.capturedTeams && matchup.capturedTeams.length > 0 && wasUnderdogCover;
 
   return (
     <div 
