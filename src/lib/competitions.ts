@@ -6,7 +6,6 @@ export interface CompetitionConfig {
   description: string;
   format: 'single_elimination' | 'series_bracket';
   captureEnabled: boolean;
-  atsEnabled: boolean;
   defaultTeamsPerPlayer: number;
   maxPlayers: number;
   icon: string;
@@ -21,7 +20,6 @@ export const COMPETITIONS: CompetitionConfig[] = [
     description: 'Single-elimination bracket with 14 teams',
     format: 'single_elimination',
     captureEnabled: true,
-    atsEnabled: true,
     defaultTeamsPerPlayer: 1,
     maxPlayers: 14,
     icon: '🏈',
@@ -34,7 +32,6 @@ export const COMPETITIONS: CompetitionConfig[] = [
     description: 'Best-of-7 series bracket with 16 teams',
     format: 'series_bracket',
     captureEnabled: true,
-    atsEnabled: false,
     defaultTeamsPerPlayer: 1,
     maxPlayers: 16,
     icon: '🏀',
@@ -47,7 +44,6 @@ export const COMPETITIONS: CompetitionConfig[] = [
     description: 'Best-of-7 series bracket with 16 teams',
     format: 'series_bracket',
     captureEnabled: true,
-    atsEnabled: false,
     defaultTeamsPerPlayer: 1,
     maxPlayers: 16,
     icon: '🏒',
@@ -60,7 +56,6 @@ export const COMPETITIONS: CompetitionConfig[] = [
     description: 'Mixed format with Wild Card and series rounds',
     format: 'series_bracket',
     captureEnabled: true,
-    atsEnabled: false,
     defaultTeamsPerPlayer: 1,
     maxPlayers: 12,
     icon: '⚾',

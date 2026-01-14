@@ -50,11 +50,6 @@ export function CompetitionSelector({ value, onChange }: CompetitionSelectorProp
                 Capture Mode
               </span>
             )}
-            {comp.atsEnabled && (
-              <span className="text-xs px-2 py-1 rounded-full bg-accent text-accent-foreground">
-                ATS Scoring
-              </span>
-            )}
           </div>
         </button>
       ))}

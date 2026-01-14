@@ -22,7 +22,6 @@ const poolSchema = z.object({
   competitionKey: z.string().min(1, 'Please select a competition'),
   name: z.string().trim().min(1, 'Pool name is required').max(50, 'Pool name must be less than 50 characters'),
   mode: z.enum(['standard', 'capture']),
-  scoringRule: z.enum(['straight', 'ats']),
   buyinAmountCents: z.number().min(0).max(100000),
   maxPlayers: z.number().min(2).max(32),
   teamsPerPlayer: z.number().min(1).max(4),
@@ -57,7 +56,6 @@ export default function CreatePool() {
       competitionKey: '',
       name: '',
       mode: 'capture',
-      scoringRule: 'straight',
       buyinAmountCents: 0,
       maxPlayers: 8,
       teamsPerPlayer: 1,
@@ -70,9 +68,6 @@ export default function CreatePool() {
     setSelectedCompetition(comp);
     form.setValue('competitionKey', comp.key);
     form.setValue('maxPlayers', Math.min(8, comp.maxPlayers));
-    if (!comp.atsEnabled) {
-      form.setValue('scoringRule', 'straight');
-    }
     if (!comp.captureEnabled) {
       form.setValue('mode', 'standard');
     }
@@ -102,6 +97,9 @@ export default function CreatePool() {
 
     try {
       // Create the pool
+      // Derive scoring_rule from mode: capture = ats, standard = straight
+      const scoringRule = values.mode === 'capture' ? 'ats' : 'straight';
+      
       const { data: pool, error: poolError } = await supabase
         .from('pools')
         .insert({
@@ -109,7 +107,7 @@ export default function CreatePool() {
           competition_key: values.competitionKey,
           season: selectedCompetition.season,
           mode: values.mode,
-          scoring_rule: values.scoringRule,
+          scoring_rule: scoringRule,
           buyin_amount_cents: values.buyinAmountCents,
           max_players: values.maxPlayers,
           teams_per_player: values.teamsPerPlayer,
@@ -256,18 +254,23 @@ export default function CreatePool() {
                               <RadioGroup
                                 value={field.value}
                                 onValueChange={field.onChange}
-                                className="grid grid-cols-2 gap-4"
+                                className="grid grid-cols-1 gap-4"
                               >
                                 <div>
                                   <RadioGroupItem value="capture" id="capture" className="peer sr-only" />
                                   <Label
                                     htmlFor="capture"
-                                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                                    className="flex flex-col rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                                   >
-                                    <span className="text-2xl mb-2">🏴‍☠️</span>
-                                    <span className="font-medium">Capture Mode</span>
-                                    <span className="text-xs text-muted-foreground text-center mt-1">
-                                      Winners capture loser's teams
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <span className="text-2xl">🏴‍☠️</span>
+                                      <span className="font-medium text-lg">Capture Mode</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground mb-2">
+                                      Spreads determine winners. If a team covers the spread, they advance. Underdogs can capture favored teams who don't cover!
+                                    </span>
+                                    <span className="text-xs text-primary/80 bg-primary/5 px-2 py-1 rounded inline-block w-fit">
+                                      Example: If KC is -7 vs MIA, and KC wins by 6, MIA covers and captures KC.
                                     </span>
                                   </Label>
                                 </div>
@@ -275,57 +278,17 @@ export default function CreatePool() {
                                   <RadioGroupItem value="standard" id="standard" className="peer sr-only" />
                                   <Label
                                     htmlFor="standard"
-                                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
+                                    className="flex flex-col rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
                                   >
-                                    <span className="text-2xl mb-2">🏆</span>
-                                    <span className="font-medium">Standard Mode</span>
-                                    <span className="text-xs text-muted-foreground text-center mt-1">
-                                      Points for each win
+                                    <div className="flex items-center gap-3 mb-2">
+                                      <span className="text-2xl">🏆</span>
+                                      <span className="font-medium text-lg">Standard Mode</span>
+                                    </div>
+                                    <span className="text-sm text-muted-foreground mb-2">
+                                      Straight-up wins. Whoever wins the game advances — no spreads involved.
                                     </span>
-                                  </Label>
-                                </div>
-                              </RadioGroup>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {selectedCompetition.atsEnabled && (
-                      <FormField
-                        control={form.control}
-                        name="scoringRule"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Scoring Rule</FormLabel>
-                            <FormControl>
-                              <RadioGroup
-                                value={field.value}
-                                onValueChange={field.onChange}
-                                className="grid grid-cols-2 gap-4"
-                              >
-                                <div>
-                                  <RadioGroupItem value="straight" id="straight" className="peer sr-only" />
-                                  <Label
-                                    htmlFor="straight"
-                                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                                  >
-                                    <span className="font-medium">Straight Up</span>
-                                    <span className="text-xs text-muted-foreground text-center mt-1">
-                                      Winner takes all
-                                    </span>
-                                  </Label>
-                                </div>
-                                <div>
-                                  <RadioGroupItem value="ats" id="ats" className="peer sr-only" />
-                                  <Label
-                                    htmlFor="ats"
-                                    className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                                  >
-                                    <span className="font-medium">Against the Spread</span>
-                                    <span className="text-xs text-muted-foreground text-center mt-1">
-                                      Point spread decides
+                                    <span className="text-xs text-primary/80 bg-primary/5 px-2 py-1 rounded inline-block w-fit">
+                                      Example: If KC beats MIA 24-21, KC's owner keeps their team and advances.
                                     </span>
                                   </Label>
                                 </div>
@@ -499,11 +462,9 @@ export default function CreatePool() {
                       </div>
                       <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Mode</span>
-                        <span className="font-medium capitalize">{values.mode}</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Scoring</span>
-                        <span className="font-medium">{values.scoringRule === 'ats' ? 'Against the Spread' : 'Straight Up'}</span>
+                        <span className="font-medium">
+                          {values.mode === 'capture' ? 'Capture Mode (Spreads)' : 'Standard Mode (Straight-up)'}
+                        </span>
                       </div>
                       <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Buy-in</span>
