@@ -13,6 +13,7 @@ import MyPools from "./pages/MyPools";
 import Pool from "./pages/Pool";
 import JoinPool from "./pages/JoinPool";
 import NotFound from "./pages/NotFound";
+import AdminRosters from "./pages/admin/Rosters";
 
 const queryClient = new QueryClient();
 
@@ -32,6 +33,8 @@ const App = () => (
             <Route path="/create-pool" element={<ProtectedRoute><CreatePool /></ProtectedRoute>} />
             <Route path="/my-pools" element={<ProtectedRoute><MyPools /></ProtectedRoute>} />
             <Route path="/pool/:poolId" element={<ProtectedRoute><Pool /></ProtectedRoute>} />
+            {/* Admin routes */}
+            <Route path="/admin/rosters" element={<ProtectedRoute><AdminRosters /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

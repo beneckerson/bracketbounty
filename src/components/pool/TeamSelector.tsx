@@ -1,22 +1,24 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { Check, Minus } from 'lucide-react';
+import { Check, Minus, AlertCircle } from 'lucide-react';
+import { getCompetition } from '@/lib/competitions';
 
-interface Team {
+interface RosterTeam {
   code: string;
   name: string;
   abbreviation: string;
   color: string;
-  league: string;
+  seed: number | null;
+  is_eliminated: boolean;
 }
 
 interface TeamSelectorProps {
   competitionKey: string;
+  season: string;
   selectedTeams: string[];
   onChange: (teams: string[]) => void;
 }
@@ -24,20 +26,20 @@ interface TeamSelectorProps {
 // Map competition keys to league identifiers
 function getLeagueFromCompetition(competitionKey: string): string {
   const leagueMap: Record<string, string> = {
-    'cfp_2024': 'CFP',
-    'nfl_playoffs_2024': 'NFL',
-    'nba_playoffs_2025': 'NBA',
-    'nhl_playoffs_2025': 'NHL',
-    'mlb_playoffs_2025': 'MLB',
-    'march_madness_2025': 'NCAAB',
+    'nfl_playoffs': 'NFL',
+    'nba_playoffs': 'NBA',
+    'nhl_playoffs': 'NHL',
+    'mlb_playoffs': 'MLB',
+    'march_madness': 'NCAAB',
   };
   return leagueMap[competitionKey] || competitionKey.split('_')[0].toUpperCase();
 }
 
-export function TeamSelector({ competitionKey, selectedTeams, onChange }: TeamSelectorProps) {
-  const [teams, setTeams] = useState<Team[]>([]);
+export function TeamSelector({ competitionKey, season, selectedTeams, onChange }: TeamSelectorProps) {
+  const [teams, setTeams] = useState<RosterTeam[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noRoster, setNoRoster] = useState(false);
 
   const league = getLeagueFromCompetition(competitionKey);
 
@@ -45,26 +47,66 @@ export function TeamSelector({ competitionKey, selectedTeams, onChange }: TeamSe
     async function fetchTeams() {
       setLoading(true);
       setError(null);
+      setNoRoster(false);
 
-      const { data, error: fetchError } = await supabase
-        .from('teams')
-        .select('code, name, abbreviation, color, league')
-        .eq('league', league)
-        .order('name');
+      // First try to fetch from competition_rosters (admin-curated)
+      const { data: rosterData, error: rosterError } = await supabase
+        .from('competition_rosters')
+        .select('team_code, seed, is_eliminated')
+        .eq('competition_key', competitionKey)
+        .eq('season', season)
+        .eq('is_eliminated', false)
+        .order('seed', { ascending: true, nullsFirst: false });
 
-      if (fetchError) {
+      if (rosterError) {
         setError('Failed to load teams');
-        console.error('Error fetching teams:', fetchError);
-      } else {
-        setTeams(data || []);
+        console.error('Error fetching roster:', rosterError);
+        setLoading(false);
+        return;
       }
+
+      if (!rosterData || rosterData.length === 0) {
+        setNoRoster(true);
+        setTeams([]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch team details for the roster entries
+      const teamCodes = rosterData.map(r => r.team_code);
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('teams')
+        .select('code, name, abbreviation, color')
+        .in('code', teamCodes);
+
+      if (teamsError) {
+        setError('Failed to load team details');
+        console.error('Error fetching teams:', teamsError);
+        setLoading(false);
+        return;
+      }
+
+      // Merge roster data with team details
+      const mergedTeams: RosterTeam[] = rosterData.map(r => {
+        const team = teamsData?.find(t => t.code === r.team_code);
+        return {
+          code: r.team_code,
+          name: team?.name || r.team_code,
+          abbreviation: team?.abbreviation || r.team_code,
+          color: team?.color || 'hsl(var(--muted))',
+          seed: r.seed,
+          is_eliminated: r.is_eliminated,
+        };
+      });
+
+      setTeams(mergedTeams);
       setLoading(false);
     }
 
-    if (competitionKey) {
+    if (competitionKey && season) {
       fetchTeams();
     }
-  }, [competitionKey, league]);
+  }, [competitionKey, season, league]);
 
   const toggleTeam = (code: string) => {
     if (selectedTeams.includes(code)) {
@@ -112,12 +154,14 @@ export function TeamSelector({ competitionKey, selectedTeams, onChange }: TeamSe
     );
   }
 
-  if (teams.length === 0) {
+  if (noRoster || teams.length === 0) {
     return (
       <div className="text-center py-8 border-2 border-dashed border-border rounded-lg">
-        <p className="text-muted-foreground">No teams found for {league}</p>
-        <p className="text-sm text-muted-foreground mt-2">
-          Teams will be available after the competition schedule is synced.
+        <AlertCircle className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+        <p className="text-muted-foreground font-medium">No roster configured</p>
+        <p className="text-sm text-muted-foreground mt-2 max-w-md mx-auto">
+          The team roster for this competition hasn't been set up yet. 
+          An administrator needs to configure which teams are available.
         </p>
       </div>
     );
@@ -174,6 +218,13 @@ export function TeamSelector({ competitionKey, selectedTeams, onChange }: TeamSe
                   : 'border-border bg-card'
               )}
             >
+              {/* Seed badge */}
+              {team.seed && (
+                <div className="absolute -top-2 -left-2 w-6 h-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                  <span className="text-xs font-bold text-muted-foreground">{team.seed}</span>
+                </div>
+              )}
+
               {/* Team color indicator */}
               <div
                 className="w-3 h-8 rounded-sm flex-shrink-0"
@@ -206,7 +257,7 @@ export function TeamSelector({ competitionKey, selectedTeams, onChange }: TeamSe
               const team = teams.find((t) => t.code === code);
               return (
                 <Badge key={code} variant="secondary" className="text-xs">
-                  {team?.abbreviation || code}
+                  {team?.seed ? `#${team.seed} ` : ''}{team?.abbreviation || code}
                 </Badge>
               );
             })}
