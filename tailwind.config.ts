@@ -14,7 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['"Bebas Neue"', 'system-ui', 'sans-serif'],
+        display: ['Oswald', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
       colors: {
@@ -78,6 +78,7 @@ export default {
         winner: "hsl(var(--winner-highlight))",
         capture: "hsl(var(--capture-badge))",
         live: "hsl(var(--live-indicator))",
+        "brand-green": "hsl(var(--brand-green))",
       },
       borderRadius: {
         lg: "var(--radius)",

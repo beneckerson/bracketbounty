@@ -2,43 +2,46 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Bebas+Neue&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
-    /* Core palette - sports authority meets modern product */
+    /* Core palette - BracketBounty brand colors */
     --background: 220 14% 96%;
-    --foreground: 222 47% 11%;
+    --foreground: 219 44% 18%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 219 44% 18%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 219 44% 18%;
 
-    /* Deep navy - primary brand */
-    --primary: 210 60% 25%;
+    /* Deep navy - primary brand (from logo) */
+    --primary: 219 44% 18%;
     --primary-foreground: 0 0% 100%;
 
     /* Light slate for secondary surfaces */
     --secondary: 214 32% 91%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary-foreground: 219 44% 18%;
 
     --muted: 220 14% 90%;
     --muted-foreground: 215 16% 47%;
 
-    /* Warm amber accent */
-    --accent: 38 92% 50%;
-    --accent-foreground: 0 0% 100%;
+    /* Gold/amber accent (from logo "BOUNTY" text) */
+    --accent: 43 89% 55%;
+    --accent-foreground: 219 44% 18%;
 
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 214 32% 91%;
     --input: 214 32% 91%;
-    --ring: 210 60% 25%;
+    --ring: 219 44% 18%;
 
     --radius: 1rem;
+    
+    /* Brand green (from logo cash/leaves) */
+    --brand-green: 142 55% 38%;
 
     /* Custom tokens for bracket UI */
     --bracket-line: 215 25% 27%;
@@ -122,7 +125,8 @@
   }
 
   h1, h2, h3, .font-display {
-    font-family: 'Bebas Neue', system-ui, sans-serif;
+    font-family: 'Oswald', system-ui, sans-serif;
+    font-weight: 600;
     letter-spacing: 0.02em;
   }
 }
