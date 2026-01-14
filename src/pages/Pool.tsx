@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, DollarSign, Copy, Check, Settings, Loader2 } from 'lucide-react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft, Users, Copy, Check, Settings, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
+import { ManagePoolDrawer } from '@/components/pool/ManagePoolDrawer';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
@@ -51,44 +52,46 @@ const statusLabels: Record<string, string> = {
 
 export default function Pool() {
   const { poolId } = useParams<{ poolId: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [pool, setPool] = useState<PoolData | null>(null);
   const [members, setMembers] = useState<PoolMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
 
   const isCreator = pool?.created_by === user?.id;
 
-  useEffect(() => {
-    async function fetchPool() {
-      if (!poolId) return;
+  const fetchPoolData = async () => {
+    if (!poolId) return;
 
-      try {
-        const { data: poolData, error: poolError } = await supabase
-          .from('pools')
-          .select('*')
-          .eq('id', poolId)
-          .single();
+    try {
+      const { data: poolData, error: poolError } = await supabase
+        .from('pools')
+        .select('*')
+        .eq('id', poolId)
+        .single();
 
-        if (poolError) throw poolError;
-        setPool(poolData);
+      if (poolError) throw poolError;
+      setPool(poolData);
 
-        const { data: membersData, error: membersError } = await supabase
-          .from('pool_members')
-          .select('id, display_name, role, is_claimed, user_id, joined_at')
-          .eq('pool_id', poolId)
-          .order('joined_at', { ascending: true });
+      const { data: membersData, error: membersError } = await supabase
+        .from('pool_members')
+        .select('id, display_name, role, is_claimed, user_id, joined_at')
+        .eq('pool_id', poolId)
+        .order('joined_at', { ascending: true });
 
-        if (membersError) throw membersError;
-        setMembers(membersData || []);
-      } catch (error) {
-        console.error('Error fetching pool:', error);
-      } finally {
-        setLoading(false);
-      }
+      if (membersError) throw membersError;
+      setMembers(membersData || []);
+    } catch (error) {
+      console.error('Error fetching pool:', error);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    fetchPool();
+  useEffect(() => {
+    fetchPoolData();
   }, [poolId]);
 
   const copyInviteCode = () => {
@@ -217,7 +220,7 @@ export default function Pool() {
                 Players ({members.length} / {pool.max_players || '—'})
               </h2>
               {isCreator && pool.status === 'lobby' && (
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" onClick={() => setManageOpen(true)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Manage
                 </Button>
@@ -280,6 +283,18 @@ export default function Pool() {
           )}
         </div>
       </main>
+
+      {/* Manage Pool Drawer */}
+      {pool && isCreator && (
+        <ManagePoolDrawer
+          open={manageOpen}
+          onOpenChange={setManageOpen}
+          pool={pool}
+          members={members}
+          onMembersChange={fetchPoolData}
+          onPoolDelete={() => navigate('/my-pools')}
+        />
+      )}
     </div>
   );
 }
