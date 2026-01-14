@@ -401,6 +401,7 @@ export type Database = {
           payout_note: string | null
           scoring_rule: Database["public"]["Enums"]["scoring_rule"]
           season: string
+          selected_teams: string[] | null
           status: Database["public"]["Enums"]["pool_status"]
           teams_per_player: number | null
           winner_member_id: string | null
@@ -420,6 +421,7 @@ export type Database = {
           payout_note?: string | null
           scoring_rule?: Database["public"]["Enums"]["scoring_rule"]
           season: string
+          selected_teams?: string[] | null
           status?: Database["public"]["Enums"]["pool_status"]
           teams_per_player?: number | null
           winner_member_id?: string | null
@@ -439,6 +441,7 @@ export type Database = {
           payout_note?: string | null
           scoring_rule?: Database["public"]["Enums"]["scoring_rule"]
           season?: string
+          selected_teams?: string[] | null
           status?: Database["public"]["Enums"]["pool_status"]
           teams_per_player?: number | null
           winner_member_id?: string | null

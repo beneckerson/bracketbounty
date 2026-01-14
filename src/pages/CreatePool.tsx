@@ -13,6 +13,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Header } from '@/components/layout/Header';
 import { CompetitionSelector } from '@/components/pool/CompetitionSelector';
+import { TeamSelector } from '@/components/pool/TeamSelector';
+import { AllocationCalculator } from '@/components/pool/AllocationCalculator';
 import { getCompetition, CompetitionConfig } from '@/lib/competitions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -22,6 +24,7 @@ const poolSchema = z.object({
   competitionKey: z.string().min(1, 'Please select a competition'),
   name: z.string().trim().min(1, 'Pool name is required').max(50, 'Pool name must be less than 50 characters'),
   mode: z.enum(['standard', 'capture']),
+  selectedTeams: z.array(z.string()).min(2, 'Select at least 2 teams'),
   buyinAmountCents: z.number().min(0).max(100000),
   maxPlayers: z.number().min(2).max(32),
   teamsPerPlayer: z.number().min(1).max(4),
@@ -34,8 +37,9 @@ type PoolFormValues = z.infer<typeof poolSchema>;
 const STEPS = [
   { id: 1, name: 'Competition', description: 'Choose your playoff' },
   { id: 2, name: 'Settings', description: 'Pool rules' },
-  { id: 3, name: 'Players', description: 'Buy-in & size' },
-  { id: 4, name: 'Review', description: 'Confirm details' },
+  { id: 3, name: 'Teams', description: 'Select teams' },
+  { id: 4, name: 'Players', description: 'Buy-in & size' },
+  { id: 5, name: 'Review', description: 'Confirm details' },
 ];
 
 export default function CreatePool() {
@@ -56,6 +60,7 @@ export default function CreatePool() {
       competitionKey: '',
       name: '',
       mode: 'capture',
+      selectedTeams: [],
       buyinAmountCents: 0,
       maxPlayers: 8,
       teamsPerPlayer: 1,
@@ -67,6 +72,7 @@ export default function CreatePool() {
   const handleCompetitionSelect = (comp: CompetitionConfig) => {
     setSelectedCompetition(comp);
     form.setValue('competitionKey', comp.key);
+    form.setValue('selectedTeams', []); // Reset teams when competition changes
     form.setValue('maxPlayers', Math.min(8, comp.maxPlayers));
     if (!comp.captureEnabled) {
       form.setValue('mode', 'standard');
@@ -85,7 +91,14 @@ export default function CreatePool() {
         return;
       }
     }
-    setCurrentStep((s) => Math.min(s + 1, 4));
+    if (currentStep === 3) {
+      const teams = form.getValues('selectedTeams');
+      if (teams.length < 2) {
+        toast({ title: 'Please select at least 2 teams', variant: 'destructive' });
+        return;
+      }
+    }
+    setCurrentStep((s) => Math.min(s + 1, 5));
   };
 
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
@@ -113,6 +126,7 @@ export default function CreatePool() {
           teams_per_player: values.teamsPerPlayer,
           allocation_method: values.allocationMethod,
           payout_note: values.payoutNote || null,
+          selected_teams: values.selectedTeams,
           created_by: user.id,
           status: 'lobby',
         })
@@ -168,6 +182,10 @@ export default function CreatePool() {
     ? `$${(values.buyinAmountCents / 100).toFixed(0)}` 
     : 'Free';
 
+  // Calculate allocation status
+  const teamCount = values.selectedTeams.length;
+  const playerCount = values.maxPlayers;
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -181,7 +199,7 @@ export default function CreatePool() {
                 <div key={step.id} className="flex items-center">
                   <div className="flex flex-col items-center">
                     <div
-                      className={`w-10 h-10 rounded-full flex items-center justify-center font-medium transition-colors ${
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-medium text-sm sm:text-base transition-colors ${
                         currentStep >= step.id
                           ? 'bg-primary text-primary-foreground'
                           : 'bg-muted text-muted-foreground'
@@ -193,7 +211,7 @@ export default function CreatePool() {
                   </div>
                   {idx < STEPS.length - 1 && (
                     <div
-                      className={`w-12 sm:w-20 h-0.5 mx-2 transition-colors ${
+                      className={`w-6 sm:w-12 h-0.5 mx-1 sm:mx-2 transition-colors ${
                         currentStep > step.id ? 'bg-primary' : 'bg-muted'
                       }`}
                     />
@@ -208,7 +226,7 @@ export default function CreatePool() {
             <form 
               onSubmit={(e) => e.preventDefault()}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && currentStep !== 4) {
+                if (e.key === 'Enter' && currentStep !== 5) {
                   e.preventDefault();
                 }
               }}
@@ -309,13 +327,40 @@ export default function CreatePool() {
                   </div>
                 )}
 
-                {/* Step 3: Players & Buy-in */}
+                {/* Step 3: Select Teams */}
                 {currentStep === 3 && selectedCompetition && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="text-2xl font-display text-foreground mb-2">Select Teams</h2>
+                      <p className="text-muted-foreground">
+                        Choose which teams will be part of your pool's drawing
+                      </p>
+                    </div>
+
+                    <TeamSelector
+                      competitionKey={values.competitionKey}
+                      selectedTeams={values.selectedTeams}
+                      onChange={(teams) => form.setValue('selectedTeams', teams)}
+                    />
+                  </div>
+                )}
+
+                {/* Step 4: Players & Buy-in */}
+                {currentStep === 4 && selectedCompetition && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-2xl font-display text-foreground mb-2">Players & Buy-in</h2>
                       <p className="text-muted-foreground">Set up your pool size and entry fee</p>
                     </div>
+
+                    {/* Allocation Calculator */}
+                    {teamCount > 0 && (
+                      <AllocationCalculator
+                        teamCount={teamCount}
+                        playerCount={playerCount}
+                        onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
+                      />
+                    )}
 
                     <FormField
                       control={form.control}
@@ -359,6 +404,9 @@ export default function CreatePool() {
                                 onChange={(e) => field.onChange(Number(e.target.value))}
                               />
                             </FormControl>
+                            <FormDescription className="text-xs">
+                              {teamCount} teams selected
+                            </FormDescription>
                             <FormMessage />
                           </FormItem>
                         )}
@@ -450,8 +498,8 @@ export default function CreatePool() {
                   </div>
                 )}
 
-                {/* Step 4: Review */}
-                {currentStep === 4 && selectedCompetition && (
+                {/* Step 5: Review */}
+                {currentStep === 5 && selectedCompetition && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-2xl font-display text-foreground mb-2">Review Your Pool</h2>
@@ -474,6 +522,10 @@ export default function CreatePool() {
                         </span>
                       </div>
                       <div className="flex justify-between py-3 border-b border-border">
+                        <span className="text-muted-foreground">Teams Selected</span>
+                        <span className="font-medium">{values.selectedTeams.length} teams</span>
+                      </div>
+                      <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Buy-in</span>
                         <span className="font-medium">{buyinDisplay}</span>
                       </div>
@@ -484,6 +536,17 @@ export default function CreatePool() {
                       <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Teams per Player</span>
                         <span className="font-medium">{values.teamsPerPlayer}</span>
+                      </div>
+                      <div className="flex justify-between py-3 border-b border-border">
+                        <span className="text-muted-foreground">Allocation Math</span>
+                        <span className="font-medium">
+                          {values.selectedTeams.length} ÷ {values.maxPlayers} = {Math.floor(values.selectedTeams.length / values.maxPlayers)} each
+                          {values.selectedTeams.length % values.maxPlayers !== 0 && (
+                            <span className="text-amber-500 ml-1">
+                              ({values.selectedTeams.length % values.maxPlayers} remainder)
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Allocation</span>
@@ -513,7 +576,7 @@ export default function CreatePool() {
                     </Button>
                   )}
 
-                  {currentStep < 4 ? (
+                  {currentStep < 5 ? (
                     <Button type="button" onClick={nextStep}>
                       Continue
                       <ArrowRight className="h-4 w-4 ml-2" />
