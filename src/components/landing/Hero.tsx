@@ -26,9 +26,9 @@ export function Hero() {
         </div>
 
         {/* Tagline */}
-        <p className="text-xl md:text-2xl lg:text-3xl font-display text-primary tracking-wide mb-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-bebas text-primary tracking-wide mb-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
           PLAYOFF POOLS FOR FRIENDS
-        </p>
+        </h1>
 
         {/* Subheading */}
         <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: '200ms' }}>

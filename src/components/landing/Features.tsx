@@ -44,7 +44,7 @@ export function Features() {
     <section className="py-20 px-4 bg-card">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="font-display text-4xl md:text-5xl text-foreground mb-4">
+          <h2 className="font-bebas text-5xl md:text-6xl text-foreground tracking-wide mb-4">
             HOW IT WORKS
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
