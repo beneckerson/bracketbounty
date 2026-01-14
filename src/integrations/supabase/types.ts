@@ -594,6 +594,18 @@ export type Database = {
         Args: { _member_id: string; _pool_id: string }
         Returns: boolean
       }
+      lookup_pool_by_invite_code: {
+        Args: { code: string }
+        Returns: {
+          buyin_amount_cents: number
+          competition_key: string
+          id: string
+          max_players: number
+          name: string
+          season: string
+          status: Database["public"]["Enums"]["pool_status"]
+        }[]
+      }
     }
     Enums: {
       allocation_method: "random" | "draft"
