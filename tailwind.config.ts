@@ -65,13 +65,15 @@ export default {
         },
         // Team colors
         team: {
-          red: "hsl(var(--team-red))",
+          crimson: "hsl(var(--team-crimson))",   // IND, BAMA
+          scarlet: "hsl(var(--team-scarlet))",   // OSU
+          red: "hsl(var(--team-red))",           // UGA, TTU
+          green: "hsl(var(--team-green))",       // ORE
+          orange: "hsl(var(--team-orange))",     // MIAMI
+          navy: "hsl(var(--team-navy))",         // MISS
           blue: "hsl(var(--team-blue))",
-          green: "hsl(var(--team-green))",
-          orange: "hsl(var(--team-orange))",
           purple: "hsl(var(--team-purple))",
           gold: "hsl(var(--team-gold))",
-          navy: "hsl(var(--team-navy))",
           teal: "hsl(var(--team-teal))",
         },
         bracket: {
