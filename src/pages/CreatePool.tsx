@@ -339,6 +339,7 @@ export default function CreatePool() {
 
                     <TeamSelector
                       competitionKey={values.competitionKey}
+                      season={selectedCompetition.season}
                       selectedTeams={values.selectedTeams}
                       onChange={(teams) => form.setValue('selectedTeams', teams)}
                     />

@@ -49,6 +49,42 @@ export type Database = {
           },
         ]
       }
+      competition_rosters: {
+        Row: {
+          added_at: string | null
+          added_by: string | null
+          competition_key: string
+          eliminated_at: string | null
+          id: string
+          is_eliminated: boolean | null
+          season: string
+          seed: number | null
+          team_code: string
+        }
+        Insert: {
+          added_at?: string | null
+          added_by?: string | null
+          competition_key: string
+          eliminated_at?: string | null
+          id?: string
+          is_eliminated?: boolean | null
+          season: string
+          seed?: number | null
+          team_code: string
+        }
+        Update: {
+          added_at?: string | null
+          added_by?: string | null
+          competition_key?: string
+          eliminated_at?: string | null
+          id?: string
+          is_eliminated?: boolean | null
+          season?: string
+          seed?: number | null
+          team_code?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           away_team: string
