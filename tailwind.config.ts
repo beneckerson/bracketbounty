@@ -15,6 +15,7 @@ export default {
     extend: {
       fontFamily: {
         'bebas': ['Bebas Neue', 'system-ui', 'sans-serif'],
+        'fugaz': ['Fugaz One', 'system-ui', 'sans-serif'],
         display: ['Oswald', 'system-ui', 'sans-serif'],
         sans: ['Inter', 'system-ui', 'sans-serif'],
       },
