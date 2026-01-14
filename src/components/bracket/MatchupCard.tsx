@@ -51,11 +51,34 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
   const teamBCovered = didCoverSpread(matchup.teamB.score, matchup.teamA.score, matchup.teamB.spread);
   const isFinal = matchup.status === 'final';
   
-  // "CAPTURED" chip shows when the underdog covers (winner had a positive spread)
-  // This represents an "upset" in ATS terms - the underdog covered and captures the favorite
-  const winnerSpread = isTeamAWinner ? matchup.teamA.spread : (isTeamBWinner ? matchup.teamB.spread : undefined);
-  const wasUnderdogCover = winnerSpread !== undefined && winnerSpread > 0;
-  const hasCaptured = showCapture && pool.mode === 'capture' && isFinal && matchup.capturedTeams && matchup.capturedTeams.length > 0 && wasUnderdogCover;
+// Determine outcome chip type for capture mode
+  // Identify underdog vs favorite by spread (positive spread = underdog)
+  const isTeamAUnderdog = (matchup.teamA.spread ?? 0) > 0;
+  const underdogEntry = isTeamAUnderdog ? matchup.teamA : matchup.teamB;
+  const favoriteEntry = isTeamAUnderdog ? matchup.teamB : matchup.teamA;
+
+  const underdogScore = underdogEntry.score ?? 0;
+  const favoriteScore = favoriteEntry.score ?? 0;
+  const underdogWonOutright = underdogScore > favoriteScore;
+  const underdogCovered = didCoverSpread(underdogEntry.score, favoriteEntry.score, underdogEntry.spread);
+  const favoriteCovered = didCoverSpread(favoriteEntry.score, underdogEntry.score, favoriteEntry.spread);
+
+  // Determine chip type:
+  // - UPSET: Underdog covers AND wins outright
+  // - CAPTURED: Underdog covers BUT loses outright (true capture!)
+  // - ADVANCES: Favorite covers and advances normally
+  let chipType: 'upset' | 'captured' | 'advances' | null = null;
+  if (isFinal && pool.mode === 'capture' && isAtsMode) {
+    if (underdogCovered) {
+      if (underdogWonOutright) {
+        chipType = 'upset';    // Underdog won AND covered
+      } else {
+        chipType = 'captured'; // Underdog LOST but still covered (true capture!)
+      }
+    } else if (favoriteCovered) {
+      chipType = 'advances';   // Favorite covered and advances
+    }
+  }
 
   return (
     <div 
@@ -183,10 +206,14 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
       {/* Status bar */}
       <div className="px-3 py-2 bg-muted/50 flex items-center justify-between">
         <StatusBadge status={matchup.status} />
-        {hasCaptured && (
-          <span className="capture-badge">
-            Captured
-          </span>
+        {chipType === 'upset' && (
+          <span className="upset-badge">Upset</span>
+        )}
+        {chipType === 'captured' && (
+          <span className="capture-badge">Captured</span>
+        )}
+        {chipType === 'advances' && (
+          <span className="advances-badge">Advances</span>
         )}
       </div>
     </div>
