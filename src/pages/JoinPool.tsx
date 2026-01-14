@@ -29,6 +29,7 @@ export default function JoinPool() {
   const [isLoading, setIsLoading] = useState(false);
   const [pool, setPool] = useState<any>(null);
   const [lookingUp, setLookingUp] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   const form = useForm<JoinFormValues>({
     resolver: zodResolver(joinSchema),
@@ -47,12 +48,18 @@ export default function JoinPool() {
 
   const lookupPool = async (code: string) => {
     setLookingUp(true);
-    const { data } = await supabase
-      .from('pools')
-      .select('id, name, competition_key, season, status, buyin_amount_cents, max_players')
-      .eq('invite_code', code.toLowerCase())
-      .single();
-    setPool(data);
+    setNotFound(false);
+    
+    const { data, error } = await supabase
+      .rpc('lookup_pool_by_invite_code', { code });
+    
+    if (error || !data || data.length === 0) {
+      setPool(null);
+      setNotFound(true);
+    } else {
+      setPool(data[0]);
+      setNotFound(false);
+    }
     setLookingUp(false);
   };
 
@@ -123,6 +130,13 @@ export default function JoinPool() {
                 />
 
                 {lookingUp && <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>}
+
+                {notFound && !lookingUp && (
+                  <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-center">
+                    <p className="text-sm text-destructive font-medium">No pool found with this code</p>
+                    <p className="text-xs text-muted-foreground mt-1">Check the code and try again.</p>
+                  </div>
+                )}
 
                 {pool && (
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
