@@ -10,6 +10,8 @@ export interface CompetitionConfig {
   maxPlayers: number;
   icon: string;
   season: string;
+  // The Odds API sport key for fetching lines
+  oddsApiSportKey: string;
 }
 
 export const COMPETITIONS: CompetitionConfig[] = [
@@ -24,6 +26,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     maxPlayers: 14,
     icon: '🏈',
     season: '2024-2025',
+    oddsApiSportKey: 'americanfootball_nfl',
   },
   {
     key: 'nba_playoffs',
@@ -36,6 +39,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     maxPlayers: 16,
     icon: '🏀',
     season: '2024-2025',
+    oddsApiSportKey: 'basketball_nba',
   },
   {
     key: 'nhl_playoffs',
@@ -48,6 +52,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     maxPlayers: 16,
     icon: '🏒',
     season: '2024-2025',
+    oddsApiSportKey: 'icehockey_nhl',
   },
   {
     key: 'mlb_playoffs',
@@ -60,9 +65,14 @@ export const COMPETITIONS: CompetitionConfig[] = [
     maxPlayers: 12,
     icon: '⚾',
     season: '2025',
+    oddsApiSportKey: 'baseball_mlb',
   },
 ];
 
 export function getCompetition(key: string): CompetitionConfig | undefined {
   return COMPETITIONS.find(c => c.key === key);
+}
+
+export function getOddsApiSportKey(competitionKey: string): string | undefined {
+  return COMPETITIONS.find(c => c.key === competitionKey)?.oddsApiSportKey;
 }
