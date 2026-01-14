@@ -138,7 +138,7 @@ export type Database = {
           {
             foreignKeyName: "lines_event_id_fkey"
             columns: ["event_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "events"
             referencedColumns: ["id"]
           },
@@ -481,6 +481,33 @@ export type Database = {
           email?: string | null
           id?: string
           venmo_handle?: string | null
+        }
+        Relationships: []
+      }
+      teams: {
+        Row: {
+          abbreviation: string
+          code: string
+          color: string | null
+          created_at: string
+          league: string
+          name: string
+        }
+        Insert: {
+          abbreviation: string
+          code: string
+          color?: string | null
+          created_at?: string
+          league: string
+          name: string
+        }
+        Update: {
+          abbreviation?: string
+          code?: string
+          color?: string | null
+          created_at?: string
+          league?: string
+          name?: string
         }
         Relationships: []
       }
