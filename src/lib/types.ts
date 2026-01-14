@@ -43,6 +43,7 @@ export interface MatchupTeamEntry {
   ownerId: string;
   score?: number;
   seriesWins?: number;
+  spread?: number; // e.g., -7.5 for favorite, +7.5 for underdog
 }
 
 export interface Matchup {
