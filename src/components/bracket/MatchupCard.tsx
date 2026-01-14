@@ -5,7 +5,7 @@ import { TeamBar } from './TeamBar';
 import { StatusBadge } from './StatusBadge';
 import { OwnerAvatar } from '@/components/ui/owner-avatar';
 import { getParticipantByMemberId } from '@/lib/demo-data';
-import { Trophy } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface MatchupCardProps {
   matchup: Matchup;
@@ -15,6 +15,29 @@ interface MatchupCardProps {
   onClick?: () => void;
 }
 
+// Helper to format spread for display
+function formatSpread(spread: number | undefined): string {
+  if (spread === undefined) return '';
+  if (spread > 0) return `+${spread}`;
+  return spread.toString();
+}
+
+// Helper to determine if a team covered the spread
+function didCoverSpread(
+  teamScore: number | undefined,
+  opponentScore: number | undefined,
+  spread: number | undefined
+): boolean | null {
+  if (teamScore === undefined || opponentScore === undefined || spread === undefined) {
+    return null;
+  }
+  // Spread is from this team's perspective
+  // e.g., spread = -7.5 means team needs to win by more than 7.5
+  // e.g., spread = +7.5 means team can lose by up to 7.5 and still cover
+  const adjustedScore = teamScore + spread;
+  return adjustedScore > opponentScore;
+}
+
 export function MatchupCard({ matchup, pool, showCapture = true, className, onClick }: MatchupCardProps) {
   const participantA = getParticipantByMemberId(pool, matchup.teamA.ownerId);
   const participantB = getParticipantByMemberId(pool, matchup.teamB.ownerId);
@@ -22,6 +45,12 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
   const isTeamAWinner = matchup.winnerId === matchup.teamA.ownerId;
   const isTeamBWinner = matchup.winnerId === matchup.teamB.ownerId;
   const hasCaptured = showCapture && pool.mode === 'capture' && matchup.capturedTeams && matchup.capturedTeams.length > 0;
+  
+  // ATS (spread) logic
+  const isAtsMode = pool.scoringRule === 'ats';
+  const teamACovered = didCoverSpread(matchup.teamA.score, matchup.teamB.score, matchup.teamA.spread);
+  const teamBCovered = didCoverSpread(matchup.teamB.score, matchup.teamA.score, matchup.teamB.spread);
+  const isFinal = matchup.status === 'final';
 
   return (
     <div 
@@ -31,7 +60,7 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
       {/* Team A Row */}
       <div className={cn(
         'team-row',
-        isTeamAWinner && 'bg-gradient-to-r from-green-50 to-transparent'
+        isTeamAWinner && 'bg-gradient-to-r from-accent/10 to-transparent'
       )}>
         <SeedBadge seed={matchup.teamA.team.seed} />
         {participantA ? (
@@ -46,8 +75,21 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
             ?
           </div>
         )}
-        <TeamBar team={matchup.teamA.team} className="flex-1" />
-        <div className="flex items-center gap-2 min-w-[50px] justify-end">
+        <div className="flex-1 flex items-center gap-2">
+          <TeamBar team={matchup.teamA.team} className="flex-1" />
+          {/* Show spread if ATS mode */}
+          {isAtsMode && matchup.teamA.spread !== undefined && (
+            <span className={cn(
+              'text-xs font-semibold px-1.5 py-0.5 rounded',
+              matchup.teamA.spread < 0 
+                ? 'bg-primary/10 text-primary' 
+                : 'bg-muted text-muted-foreground'
+            )}>
+              {formatSpread(matchup.teamA.spread)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 min-w-[70px] justify-end">
           {matchup.teamA.score !== undefined && (
             <span className={cn(
               'font-bold text-lg tabular-nums',
@@ -55,6 +97,18 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
             )}>
               {matchup.teamA.score}
             </span>
+          )}
+          {/* Show covered/failed indicator for ATS mode */}
+          {isAtsMode && isFinal && teamACovered !== null && (
+            teamACovered ? (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-brand-green">
+                <TrendingUp className="w-3 h-3" />
+              </span>
+            ) : (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-destructive/70">
+                <TrendingDown className="w-3 h-3" />
+              </span>
+            )
           )}
           {isTeamAWinner && (
             <Trophy className="w-4 h-4 text-accent" />
@@ -65,7 +119,7 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
       {/* Team B Row */}
       <div className={cn(
         'team-row',
-        isTeamBWinner && 'bg-gradient-to-r from-green-50 to-transparent'
+        isTeamBWinner && 'bg-gradient-to-r from-accent/10 to-transparent'
       )}>
         <SeedBadge seed={matchup.teamB.team.seed} />
         {participantB ? (
@@ -80,8 +134,21 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
             ?
           </div>
         )}
-        <TeamBar team={matchup.teamB.team} className="flex-1" />
-        <div className="flex items-center gap-2 min-w-[50px] justify-end">
+        <div className="flex-1 flex items-center gap-2">
+          <TeamBar team={matchup.teamB.team} className="flex-1" />
+          {/* Show spread if ATS mode */}
+          {isAtsMode && matchup.teamB.spread !== undefined && (
+            <span className={cn(
+              'text-xs font-semibold px-1.5 py-0.5 rounded',
+              matchup.teamB.spread < 0 
+                ? 'bg-primary/10 text-primary' 
+                : 'bg-muted text-muted-foreground'
+            )}>
+              {formatSpread(matchup.teamB.spread)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 min-w-[70px] justify-end">
           {matchup.teamB.score !== undefined && (
             <span className={cn(
               'font-bold text-lg tabular-nums',
@@ -89,6 +156,18 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
             )}>
               {matchup.teamB.score}
             </span>
+          )}
+          {/* Show covered/failed indicator for ATS mode */}
+          {isAtsMode && isFinal && teamBCovered !== null && (
+            teamBCovered ? (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-brand-green">
+                <TrendingUp className="w-3 h-3" />
+              </span>
+            ) : (
+              <span className="flex items-center gap-0.5 text-xs font-bold text-destructive/70">
+                <TrendingDown className="w-3 h-3" />
+              </span>
+            )
           )}
           {isTeamBWinner && (
             <Trophy className="w-4 h-4 text-accent" />
