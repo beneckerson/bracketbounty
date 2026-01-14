@@ -244,6 +244,21 @@
     background: hsl(var(--secondary));
     color: hsl(var(--secondary-foreground));
   }
+
+
+  /* Upset badge - for underdog covers AND wins outright */
+  .upset-badge {
+    @apply text-xs font-bold px-2 py-0.5 rounded uppercase tracking-wide;
+    background-color: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
+  }
+
+  /* Advances badge - for favorite covers */
+  .advances-badge {
+    @apply text-xs font-semibold px-2 py-0.5 rounded uppercase tracking-wide;
+    background-color: hsl(var(--muted));
+    color: hsl(var(--muted-foreground));
+  }
 }
 
 @layer utilities {
