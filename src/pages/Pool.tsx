@@ -5,9 +5,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
 import { ManagePoolDrawer } from '@/components/pool/ManagePoolDrawer';
+import { BracketView } from '@/components/bracket/BracketView';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
+import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam } from '@/lib/types';
 
 interface PoolData {
   id: string;
@@ -36,6 +38,60 @@ interface PoolMember {
   joined_at: string;
 }
 
+interface PoolRound {
+  id: string;
+  round_key: string;
+  name: string;
+  round_order: number;
+}
+
+interface PoolMatchup {
+  id: string;
+  round_id: string;
+  event_id: string | null;
+  participant_a_member_id: string | null;
+  participant_b_member_id: string | null;
+  winner_member_id: string | null;
+  decided_by: 'straight' | 'ats' | null;
+  commissioner_note: string | null;
+}
+
+interface EventData {
+  id: string;
+  home_team: string;
+  away_team: string;
+  status: 'scheduled' | 'live' | 'final';
+  final_home_score: number | null;
+  final_away_score: number | null;
+  series_home_wins: number | null;
+  series_away_wins: number | null;
+  start_time: string | null;
+  best_of: number | null;
+}
+
+interface TeamData {
+  code: string;
+  name: string;
+  abbreviation: string;
+  color: string | null;
+}
+
+interface OwnershipData {
+  team_code: string;
+  member_id: string;
+  acquired_via: string;
+  from_matchup_id: string | null;
+  acquired_at: string;
+}
+
+interface LineData {
+  event_id: string;
+  locked_line_payload: {
+    home_spread?: number;
+    away_spread?: number;
+  } | null;
+}
+
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   lobby: 'bg-yellow-500/10 text-yellow-600',
@@ -61,6 +117,10 @@ export default function Pool() {
   const [manageOpen, setManageOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [guestDisplayName, setGuestDisplayName] = useState<string | null>(null);
+  
+  // Bracket data
+  const [bracketPool, setBracketPool] = useState<PoolType | null>(null);
+  const [loadingBracket, setLoadingBracket] = useState(false);
 
   const isCreator = pool?.created_by === user?.id;
   
@@ -91,6 +151,11 @@ export default function Pool() {
 
           setMembers(membersData || []);
           setLoading(false);
+          
+          // Fetch bracket data if pool is active or completed
+          if (poolData.status === 'active' || poolData.status === 'completed') {
+            fetchBracketData(poolData, membersData || []);
+          }
           return;
         }
       }
@@ -129,12 +194,229 @@ export default function Pool() {
           if (guestData && guestData.length > 0) {
             setGuestDisplayName(guestData[0].display_name);
           }
+          
+          // Fetch bracket data for active/completed pools
+          const pd = poolData[0] as PoolData;
+          if (pd.status === 'active' || pd.status === 'completed') {
+            fetchBracketData(pd, (membersData || []) as PoolMember[]);
+          }
         }
       }
     } catch (error) {
       console.error('Error fetching pool:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchBracketData = async (poolData: PoolData, membersData: PoolMember[]) => {
+    if (!poolId) return;
+    setLoadingBracket(true);
+
+    try {
+      // Fetch rounds
+      const { data: rounds } = await supabase
+        .from('pool_rounds')
+        .select('*')
+        .eq('pool_id', poolId)
+        .order('round_order', { ascending: true });
+
+      // Fetch matchups
+      const { data: matchups } = await supabase
+        .from('pool_matchups')
+        .select('*')
+        .eq('pool_id', poolId);
+
+      // Get event IDs from matchups
+      const eventIds = (matchups || [])
+        .map(m => m.event_id)
+        .filter((id): id is string => id !== null);
+
+      // Fetch events
+      let events: EventData[] = [];
+      if (eventIds.length > 0) {
+        const { data: eventsData } = await supabase
+          .from('events')
+          .select('*')
+          .in('id', eventIds);
+        events = (eventsData || []) as EventData[];
+      }
+
+      // Fetch lines for spreads
+      let lines: LineData[] = [];
+      if (eventIds.length > 0) {
+        const { data: linesData } = await supabase
+          .from('lines')
+          .select('event_id, locked_line_payload')
+          .in('event_id', eventIds);
+        lines = (linesData || []) as LineData[];
+      }
+
+      // Get team codes from events
+      const teamCodes = new Set<string>();
+      events.forEach(e => {
+        teamCodes.add(e.home_team);
+        teamCodes.add(e.away_team);
+      });
+
+      // Fetch teams
+      let teams: TeamData[] = [];
+      if (teamCodes.size > 0) {
+        const { data: teamsData } = await supabase
+          .from('teams')
+          .select('code, name, abbreviation, color')
+          .in('code', Array.from(teamCodes));
+        teams = (teamsData || []) as TeamData[];
+      }
+
+      // Fetch ownership
+      const { data: ownership } = await supabase
+        .from('ownership')
+        .select('team_code, member_id, acquired_via, from_matchup_id, acquired_at')
+        .eq('pool_id', poolId);
+
+      // Build lookup maps
+      const teamMap: Record<string, TeamData> = {};
+      teams.forEach(t => { teamMap[t.code] = t; });
+
+      const eventMap: Record<string, EventData> = {};
+      events.forEach(e => { eventMap[e.id] = e; });
+
+      const lineMap: Record<string, LineData> = {};
+      lines.forEach(l => { lineMap[l.event_id] = l; });
+
+      const ownershipByTeam: Record<string, OwnershipData> = {};
+      const ownershipByMember: Record<string, OwnershipData[]> = {};
+      (ownership || []).forEach(o => {
+        ownershipByTeam[o.team_code] = o as OwnershipData;
+        if (!ownershipByMember[o.member_id]) {
+          ownershipByMember[o.member_id] = [];
+        }
+        ownershipByMember[o.member_id].push(o as OwnershipData);
+      });
+
+      // Build Pool type structure
+      const transformedRounds: Round[] = (rounds || []).map(r => {
+        const roundMatchups = (matchups || []).filter(m => m.round_id === r.id);
+        
+        const transformedMatchups: Matchup[] = roundMatchups.map(m => {
+          const event = m.event_id ? eventMap[m.event_id] : null;
+          const line = m.event_id ? lineMap[m.event_id] : null;
+          
+          const homeTeamCode = event?.home_team || '';
+          const awayTeamCode = event?.away_team || '';
+          
+          const homeTeamData = teamMap[homeTeamCode];
+          const awayTeamData = teamMap[awayTeamCode];
+          
+          const homeOwnership = ownershipByTeam[homeTeamCode];
+          const awayOwnership = ownershipByTeam[awayTeamCode];
+
+          const teamA: Team = {
+            code: homeTeamCode,
+            name: homeTeamData?.name || homeTeamCode,
+            abbreviation: homeTeamData?.abbreviation || homeTeamCode.substring(0, 3).toUpperCase(),
+            seed: 0, // Could be enhanced with seed data
+            color: homeTeamData?.color || '#888888',
+          };
+
+          const teamB: Team = {
+            code: awayTeamCode,
+            name: awayTeamData?.name || awayTeamCode,
+            abbreviation: awayTeamData?.abbreviation || awayTeamCode.substring(0, 3).toUpperCase(),
+            seed: 0,
+            color: awayTeamData?.color || '#888888',
+          };
+
+          // Determine status
+          let status: 'upcoming' | 'live' | 'final' = 'upcoming';
+          if (event?.status === 'final') status = 'final';
+          else if (event?.status === 'live') status = 'live';
+
+          return {
+            id: m.id,
+            roundId: r.id,
+            eventId: m.event_id || '',
+            teamA: {
+              team: teamA,
+              ownerId: homeOwnership?.member_id || '',
+              score: event?.final_home_score ?? undefined,
+              seriesWins: event?.series_home_wins ?? undefined,
+              spread: line?.locked_line_payload?.home_spread ?? undefined,
+            },
+            teamB: {
+              team: teamB,
+              ownerId: awayOwnership?.member_id || '',
+              score: event?.final_away_score ?? undefined,
+              seriesWins: event?.series_away_wins ?? undefined,
+              spread: line?.locked_line_payload?.away_spread ?? undefined,
+            },
+            status,
+            winnerId: m.winner_member_id || undefined,
+            winnerTeamCode: undefined, // Could be derived from event
+            decidedBy: m.decided_by || undefined,
+            commissionerNote: m.commissioner_note || undefined,
+            startTime: event?.start_time ? new Date(event.start_time) : undefined,
+            bestOf: event?.best_of ?? undefined,
+          };
+        });
+
+        return {
+          id: r.id,
+          key: r.round_key,
+          name: r.name,
+          order: r.round_order,
+          matchups: transformedMatchups,
+        };
+      });
+
+      // Build pool members with owned teams
+      const transformedMembers: PoolMemberType[] = membersData.map(m => {
+        const memberOwnership = ownershipByMember[m.id] || [];
+        const ownedTeams: OwnedTeam[] = memberOwnership.map(o => ({
+          teamCode: o.team_code,
+          acquiredVia: o.acquired_via as 'initial' | 'capture',
+          fromMatchupId: o.from_matchup_id || undefined,
+          acquiredAt: new Date(o.acquired_at),
+        }));
+
+        return {
+          id: m.id,
+          participant: {
+            id: m.user_id || m.id,
+            displayName: m.display_name,
+            initials: m.display_name.substring(0, 2).toUpperCase(),
+            isClaimed: m.is_claimed,
+          },
+          role: m.role,
+          ownedTeams,
+        };
+      });
+
+      const fullPool: PoolType = {
+        id: poolData.id,
+        name: poolData.name,
+        competitionKey: poolData.competition_key,
+        season: poolData.season,
+        mode: poolData.mode,
+        scoringRule: poolData.scoring_rule,
+        status: poolData.status,
+        buyinAmountCents: poolData.buyin_amount_cents || 0,
+        currency: 'USD',
+        maxPlayers: poolData.max_players || 16,
+        teamsPerPlayer: poolData.teams_per_player || 2,
+        allocationMethod: poolData.allocation_method,
+        inviteCode: poolData.invite_code,
+        createdBy: poolData.created_by || '',
+        members: transformedMembers,
+        rounds: transformedRounds,
+      };
+
+      setBracketPool(fullPool);
+    } catch (error) {
+      console.error('Error fetching bracket data:', error);
+    } finally {
+      setLoadingBracket(false);
     }
   };
 
@@ -180,6 +462,18 @@ export default function Pool() {
   const buyinDisplay = pool.buyin_amount_cents && pool.buyin_amount_cents > 0
     ? `$${(pool.buyin_amount_cents / 100).toFixed(0)}`
     : 'Free';
+
+  // Show bracket view for active/completed pools
+  if ((pool.status === 'active' || pool.status === 'completed') && bracketPool) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="pt-20">
+          <BracketView pool={bracketPool} />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -344,12 +638,12 @@ export default function Pool() {
             </div>
           </div>
 
-          {/* Bracket placeholder for active/completed pools */}
-          {(pool.status === 'active' || pool.status === 'completed') && (
+          {/* Loading bracket indicator */}
+          {(pool.status === 'active' || pool.status === 'completed') && loadingBracket && (
             <div className="bg-card border border-border rounded-2xl p-6 mt-6">
-              <h2 className="font-display text-lg text-foreground mb-4">Bracket</h2>
-              <div className="bg-muted/50 rounded-lg p-8 text-center">
-                <p className="text-muted-foreground">Bracket view coming soon</p>
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
+                <span className="text-muted-foreground">Loading bracket...</span>
               </div>
             </div>
           )}
