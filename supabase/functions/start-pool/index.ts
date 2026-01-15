@@ -141,6 +141,17 @@ Deno.serve(async (req) => {
       );
     }
 
+    // 3.5. Fetch team names for display
+    const { data: teamsData } = await supabase
+      .from('teams')
+      .select('code, name, abbreviation')
+      .in('code', selectedTeams);
+
+    const teamNameMap: Record<string, { name: string; abbreviation: string }> = {};
+    (teamsData || []).forEach((t: { code: string; name: string; abbreviation: string }) => {
+      teamNameMap[t.code] = { name: t.name, abbreviation: t.abbreviation };
+    });
+
     console.log(`Distributing ${selectedTeams.length} teams among ${members.length} members`);
 
     // 4. Randomly assign teams to members
@@ -152,13 +163,34 @@ Deno.serve(async (req) => {
       acquired_via: string;
     }> = [];
 
+    // Build member lookup for assignments response
+    const memberMap: Record<string, string> = {};
+    members.forEach(m => { memberMap[m.id] = m.display_name; });
+
+    // Track assignments for response
+    const assignments: Array<{
+      member_id: string;
+      member_name: string;
+      team_code: string;
+      team_name: string;
+      team_abbreviation: string;
+    }> = [];
+
     shuffledTeams.forEach((teamCode, index) => {
       const memberIndex = index % members.length;
+      const member = members[memberIndex];
       ownershipRecords.push({
         pool_id: pool_id,
-        member_id: members[memberIndex].id,
+        member_id: member.id,
         team_code: teamCode,
         acquired_via: 'initial',
+      });
+      assignments.push({
+        member_id: member.id,
+        member_name: member.display_name,
+        team_code: teamCode,
+        team_name: teamNameMap[teamCode]?.name || teamCode,
+        team_abbreviation: teamNameMap[teamCode]?.abbreviation || teamCode.substring(0, 3).toUpperCase(),
       });
     });
 
@@ -309,6 +341,7 @@ Deno.serve(async (req) => {
         teams_assigned: ownershipRecords.length,
         rounds_created: createdRounds?.length || 0,
         matchups_created: events?.length || 0,
+        assignments: assignments,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
