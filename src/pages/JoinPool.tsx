@@ -126,6 +126,13 @@ export default function JoinPool() {
           
           // Store claim token for guest access
           localStorage.setItem(`pool_claim_${pool.id}`, claim_token);
+          // Also store pool info for My Pools guest section
+          localStorage.setItem(`pool_guest_${pool.id}`, JSON.stringify({
+            poolId: pool.id,
+            poolName: pool.name,
+            displayName: values.displayName,
+            joinedAt: new Date().toISOString(),
+          }));
           
           toast({ title: 'Joined!', description: `You've joined ${pool.name}` });
           navigate(`/pool/${pool.id}`);

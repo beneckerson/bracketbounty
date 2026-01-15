@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Plus, Loader2, Trophy } from 'lucide-react';
+import { Plus, Loader2, Trophy, UserCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Header } from '@/components/layout/Header';
 import { PoolCard } from '@/components/pool/PoolCard';
@@ -22,14 +22,44 @@ interface PoolWithMemberCount {
   memberCount?: number;
 }
 
+interface GuestPoolInfo {
+  poolId: string;
+  poolName: string;
+  displayName: string;
+  joinedAt: string;
+}
+
 export default function MyPools() {
   const { user } = useAuth();
   const [pools, setPools] = useState<PoolWithMemberCount[]>([]);
+  const [guestPools, setGuestPools] = useState<GuestPoolInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check for guest pools in localStorage
+    const guestPoolsList: GuestPoolInfo[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith('pool_guest_')) {
+        try {
+          const data = JSON.parse(localStorage.getItem(key) || '');
+          if (data.poolId && data.poolName) {
+            guestPoolsList.push(data);
+          }
+        } catch {
+          // Invalid JSON, skip
+        }
+      }
+    }
+    setGuestPools(guestPoolsList);
+  }, []);
+
+  useEffect(() => {
     async function fetchPools() {
-      if (!user) return;
+      if (!user) {
+        setLoading(false);
+        return;
+      }
 
       try {
         // Get all pools where user is a member
@@ -85,6 +115,13 @@ export default function MyPools() {
 
   const createdPools = pools.filter((p) => p.created_by === user?.id);
   const joinedPools = pools.filter((p) => p.created_by !== user?.id);
+  
+  // Filter out guest pools that are already in the user's pools (claimed)
+  const unclaimedGuestPools = guestPools.filter(
+    gp => !pools.some(p => p.id === gp.poolId)
+  );
+
+  const hasNoPools = pools.length === 0 && unclaimedGuestPools.length === 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -110,7 +147,7 @@ export default function MyPools() {
             <div className="flex items-center justify-center py-20">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : pools.length === 0 ? (
+          ) : hasNoPools ? (
             <div className="text-center py-20">
               <div className="w-20 h-20 bg-muted rounded-full flex items-center justify-center mx-auto mb-6">
                 <Trophy className="h-10 w-10 text-muted-foreground" />
@@ -130,6 +167,38 @@ export default function MyPools() {
             </div>
           ) : (
             <div className="space-y-8">
+              {/* Guest Pools (unclaimed) */}
+              {unclaimedGuestPools.length > 0 && (
+                <section>
+                  <h2 className="font-display text-lg text-foreground mb-4 flex items-center gap-2">
+                    <UserCircle className="h-5 w-5 text-muted-foreground" />
+                    Pools You Joined as Guest
+                  </h2>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    {unclaimedGuestPools.map((guestPool) => (
+                      <Link
+                        key={guestPool.poolId}
+                        to={`/pool/${guestPool.poolId}`}
+                        className="block bg-card border border-border rounded-xl p-5 hover:border-primary/50 hover:shadow-lg transition-all duration-200"
+                      >
+                        <div className="flex items-center gap-3 mb-3">
+                          <span className="text-2xl">🏆</span>
+                          <div>
+                            <h3 className="font-display text-lg text-foreground">{guestPool.poolName}</h3>
+                            <p className="text-xs text-muted-foreground">
+                              Joined as "{guestPool.displayName}"
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {user ? 'Click to link this to your account' : 'Create an account to link this pool'}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </section>
+              )}
+
               {/* Created Pools */}
               {createdPools.length > 0 && (
                 <section>

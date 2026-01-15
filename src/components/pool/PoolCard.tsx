@@ -25,6 +25,7 @@ interface PoolCardProps {
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   lobby: 'bg-yellow-500/10 text-yellow-600',
+  lobby_full: 'bg-green-500/10 text-green-600',
   active: 'bg-green-500/10 text-green-600',
   completed: 'bg-blue-500/10 text-blue-600',
 };
@@ -32,6 +33,7 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   draft: 'Draft',
   lobby: 'Waiting for Players',
+  lobby_full: 'Ready to Start',
   active: 'In Progress',
   completed: 'Completed',
 };
@@ -43,6 +45,10 @@ export function PoolCard({ pool, isCreator }: PoolCardProps) {
   const buyinDisplay = pool.buyin_amount_cents && pool.buyin_amount_cents > 0
     ? `$${(pool.buyin_amount_cents / 100).toFixed(0)}`
     : 'Free';
+
+  // Determine display status - show "Ready to Start" when pool is full
+  const isFull = pool.max_players && (pool.memberCount || 0) >= pool.max_players;
+  const displayStatus = pool.status === 'lobby' && isFull ? 'lobby_full' : pool.status;
 
   const copyCode = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -69,8 +75,8 @@ export function PoolCard({ pool, isCreator }: PoolCardProps) {
             </p>
           </div>
         </div>
-        <Badge className={statusColors[pool.status]}>
-          {statusLabels[pool.status]}
+        <Badge className={statusColors[displayStatus]}>
+          {statusLabels[displayStatus]}
         </Badge>
       </div>
 

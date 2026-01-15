@@ -665,6 +665,14 @@ export type Database = {
         Args: { _event_id: string; _user_id: string }
         Returns: boolean
       }
+      claim_guest_membership: {
+        Args: { p_claim_token: string }
+        Returns: {
+          display_name: string
+          pool_id: string
+          pool_name: string
+        }[]
+      }
       get_pool_by_id_public: {
         Args: { p_claim_token?: string; p_pool_id: string }
         Returns: {
