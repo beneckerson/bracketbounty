@@ -26,6 +26,7 @@ interface TeamSelectorProps {
 // Map competition keys to league identifiers
 function getLeagueFromCompetition(competitionKey: string): string {
   const leagueMap: Record<string, string> = {
+    'cfp': 'CFB',
     'nfl_playoffs': 'NFL',
     'nba_playoffs': 'NBA',
     'nhl_playoffs': 'NHL',
