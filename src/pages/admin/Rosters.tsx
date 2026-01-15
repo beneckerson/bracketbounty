@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { RosterEditor } from '@/components/admin/RosterEditor';
+import { EventsManager } from '@/components/admin/EventsManager';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,7 +13,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2, Users, Calendar } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 import { toast } from 'sonner';
 
@@ -379,16 +381,35 @@ export default function Rosters() {
             </CardContent>
           </Card>
 
-          {/* Roster Editor */}
+          {/* Tabs for Teams and Events */}
           {selectedCompetition && selectedSeason ? (
-            <RosterEditor
-              competitionKey={selectedCompetition}
-              season={selectedSeason}
-            />
+            <Tabs defaultValue="teams" className="space-y-4">
+              <TabsList>
+                <TabsTrigger value="teams" className="flex items-center gap-2">
+                  <Users className="h-4 w-4" />
+                  Teams
+                </TabsTrigger>
+                <TabsTrigger value="events" className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4" />
+                  Events
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="teams">
+                <RosterEditor
+                  competitionKey={selectedCompetition}
+                  season={selectedSeason}
+                />
+              </TabsContent>
+              <TabsContent value="events">
+                <EventsManager
+                  competitionKey={selectedCompetition}
+                />
+              </TabsContent>
+            </Tabs>
           ) : (
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground">
-                Select a competition and season above to manage its roster
+                Select a competition and season above to manage its roster and events
               </CardContent>
             </Card>
           )}
