@@ -85,6 +85,30 @@ export type Database = {
         }
         Relationships: []
       }
+      competition_seasons: {
+        Row: {
+          competition_key: string
+          created_at: string
+          id: string
+          is_active: boolean
+          season: string
+        }
+        Insert: {
+          competition_key: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          season: string
+        }
+        Update: {
+          competition_key?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          season?: string
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           away_team: string

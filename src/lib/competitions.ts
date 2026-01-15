@@ -16,6 +16,19 @@ export interface CompetitionConfig {
 
 export const COMPETITIONS: CompetitionConfig[] = [
   {
+    key: 'cfp',
+    name: 'College Football Playoff',
+    shortName: 'CFP',
+    description: '12-team single-elimination bracket',
+    format: 'single_elimination',
+    captureEnabled: true,
+    defaultTeamsPerPlayer: 1,
+    maxPlayers: 12,
+    icon: '🏈',
+    season: '2025-2026',
+    oddsApiSportKey: 'americanfootball_ncaaf',
+  },
+  {
     key: 'nfl_playoffs',
     name: 'NFL Playoffs',
     shortName: 'NFL',
@@ -25,7 +38,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     defaultTeamsPerPlayer: 1,
     maxPlayers: 14,
     icon: '🏈',
-    season: '2024-2025',
+    season: '2025-2026',
     oddsApiSportKey: 'americanfootball_nfl',
   },
   {
@@ -38,7 +51,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     defaultTeamsPerPlayer: 1,
     maxPlayers: 16,
     icon: '🏀',
-    season: '2024-2025',
+    season: '2025-2026',
     oddsApiSportKey: 'basketball_nba',
   },
   {
@@ -51,7 +64,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     defaultTeamsPerPlayer: 1,
     maxPlayers: 16,
     icon: '🏒',
-    season: '2024-2025',
+    season: '2025-2026',
     oddsApiSportKey: 'icehockey_nhl',
   },
   {
@@ -64,7 +77,7 @@ export const COMPETITIONS: CompetitionConfig[] = [
     defaultTeamsPerPlayer: 1,
     maxPlayers: 12,
     icon: '⚾',
-    season: '2025',
+    season: '2026',
     oddsApiSportKey: 'baseball_mlb',
   },
 ];
