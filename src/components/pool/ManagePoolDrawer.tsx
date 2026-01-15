@@ -125,7 +125,7 @@ export function ManagePoolDrawer({
 
       if (error) throw error;
 
-      toast.success(`Games synced: ${data?.synced || 0} events updated`);
+      toast.success(`Games synced: ${data?.events_synced || 0} events updated`);
     } catch (error) {
       console.error('Error syncing games:', error);
       toast.error('Failed to sync games');
@@ -142,19 +142,22 @@ export function ManagePoolDrawer({
 
     setStartingPool(true);
     try {
-      const { error } = await supabase
-        .from('pools')
-        .update({ status: 'active' })
-        .eq('id', pool.id);
+      const { data, error } = await supabase.functions.invoke('start-pool', {
+        body: { pool_id: pool.id },
+      });
 
       if (error) throw error;
 
-      toast.success('Pool started!');
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      toast.success('Pool started! Teams assigned and bracket created.');
       onOpenChange(false);
       onMembersChange(); // Refresh pool data
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error starting pool:', error);
-      toast.error('Failed to start pool');
+      toast.error(error?.message || 'Failed to start pool');
     } finally {
       setStartingPool(false);
     }

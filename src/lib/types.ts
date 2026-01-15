@@ -77,7 +77,7 @@ export interface Pool {
   season: string;
   mode: PoolMode;
   scoringRule: ScoringRule;
-  status: 'lobby' | 'active' | 'completed';
+  status: 'draft' | 'lobby' | 'active' | 'completed';
   buyinAmountCents: number;
   currency: string;
   maxPlayers: number;
