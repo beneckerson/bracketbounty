@@ -32,6 +32,10 @@ const TEAM_CODE_MAP: Record<string, { code: string; abbreviation: string; color:
   'Pittsburgh Steelers': { code: 'PIT', abbreviation: 'Steelers', color: 'team-yellow' },
   'Los Angeles Rams': { code: 'LAR', abbreviation: 'Rams', color: 'team-blue' },
   'Tampa Bay Buccaneers': { code: 'TB', abbreviation: 'Buccaneers', color: 'team-red' },
+  'Washington Commanders': { code: 'WAS', abbreviation: 'Commanders', color: 'team-red' },
+  'Minnesota Vikings': { code: 'MIN_NFL', abbreviation: 'Vikings', color: 'team-purple' },
+  'Denver Broncos': { code: 'DEN_NFL', abbreviation: 'Broncos', color: 'team-orange' },
+  'Los Angeles Chargers': { code: 'LAC_NFL', abbreviation: 'Chargers', color: 'team-blue' },
   // NBA Teams
   'Boston Celtics': { code: 'BOS', abbreviation: 'Celtics', color: 'team-green' },
   'Milwaukee Bucks': { code: 'MIL', abbreviation: 'Bucks', color: 'team-green' },
@@ -85,6 +89,82 @@ function getTeamInfo(teamName: string): { code: string; abbreviation: string; co
   };
 }
 
+// Detect NFL playoff round based on game date and total games in sync
+function detectNFLPlayoffRound(startTime: Date, totalGames: number): { round_key: string; round_order: number } {
+  const month = startTime.getMonth(); // 0-indexed (0 = January)
+  const day = startTime.getDate();
+  const year = startTime.getFullYear();
+  
+  console.log(`Detecting round for date: ${year}-${month + 1}-${day}, total games: ${totalGames}`);
+  
+  // NFL playoffs are in January-February
+  if (month === 0) { // January
+    // Wild Card: typically Jan 11-13 (Saturday-Monday of first weekend)
+    if (day <= 14) {
+      return { round_key: 'wild_card', round_order: 1 };
+    }
+    // Divisional: typically Jan 18-19 (Saturday-Sunday of second weekend)
+    if (day <= 21) {
+      return { round_key: 'divisional', round_order: 2 };
+    }
+    // Conference Championships: typically Jan 26 (Sunday of third weekend)
+    return { round_key: 'conference', round_order: 3 };
+  }
+  
+  // February = Super Bowl
+  if (month === 1) { // February
+    return { round_key: 'super_bowl', round_order: 4 };
+  }
+  
+  // Fallback based on game count if date detection fails
+  // Super Bowl = 1 game, Conference = 2 games, Divisional = 4 games, Wild Card = 6 games
+  if (totalGames === 1) return { round_key: 'super_bowl', round_order: 4 };
+  if (totalGames === 2) return { round_key: 'conference', round_order: 3 };
+  if (totalGames === 4) return { round_key: 'divisional', round_order: 2 };
+  
+  // Default to wild card for 6 games or any other count
+  return { round_key: 'wild_card', round_order: 1 };
+}
+
+// Detect round for other sports (NBA, NHL, MLB playoffs)
+function detectSeriesPlayoffRound(competitionKey: string, totalGames: number): { round_key: string; round_order: number } {
+  // For series-based playoffs, we use game count as primary indicator
+  // NBA/NHL: 16 teams = 8 first round series, 4 second round, 2 conference finals, 1 finals
+  // Each series has multiple games, but we're counting series not games
+  
+  if (competitionKey === 'nba_playoffs' || competitionKey === 'nhl_playoffs') {
+    // 8 series = first round, 4 = second round, 2 = conference finals, 1 = finals
+    if (totalGames <= 2) return { round_key: 'finals', round_order: 4 };
+    if (totalGames <= 4) return { round_key: 'conference_finals', round_order: 3 };
+    if (totalGames <= 8) return { round_key: 'second_round', round_order: 2 };
+    return { round_key: 'first_round', round_order: 1 };
+  }
+  
+  if (competitionKey === 'mlb_playoffs') {
+    // MLB: Wild Card (4), Division Series (4), LCS (2), World Series (1)
+    if (totalGames === 1) return { round_key: 'world_series', round_order: 4 };
+    if (totalGames <= 2) return { round_key: 'lcs', round_order: 3 };
+    if (totalGames <= 4) return { round_key: 'division_series', round_order: 2 };
+    return { round_key: 'wild_card', round_order: 1 };
+  }
+  
+  // Default
+  return { round_key: 'regular', round_order: 1 };
+}
+
+// Main round detection function
+function detectPlayoffRound(
+  competitionKey: string, 
+  startTime: Date, 
+  totalGames: number
+): { round_key: string; round_order: number } {
+  if (competitionKey === 'nfl_playoffs') {
+    return detectNFLPlayoffRound(startTime, totalGames);
+  }
+  
+  return detectSeriesPlayoffRound(competitionKey, totalGames);
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -126,18 +206,40 @@ serve(async (req) => {
     const oddsData = await oddsResponse.json();
     console.log(`Received ${oddsData.length} events from Odds API`);
 
+    // Calculate total games for round detection
+    const totalGames = oddsData.length;
+    
+    // Get the earliest start time to determine the round
+    let referenceDate: Date | null = null;
+    if (oddsData.length > 0) {
+      referenceDate = new Date(oddsData[0].commence_time);
+      for (const event of oddsData) {
+        const eventDate = new Date(event.commence_time);
+        if (eventDate < referenceDate) {
+          referenceDate = eventDate;
+        }
+      }
+    }
+
     const syncedEvents: any[] = [];
     const syncedLines: any[] = [];
 
     for (const event of oddsData) {
       const homeTeamInfo = getTeamInfo(event.home_team);
       const awayTeamInfo = getTeamInfo(event.away_team);
+      
+      // Detect the round for this event
+      const eventStartTime = new Date(event.commence_time);
+      const roundInfo = detectPlayoffRound(competition_key, eventStartTime, totalGames);
+      
+      console.log(`Event ${event.home_team} vs ${event.away_team} -> Round: ${roundInfo.round_key} (order: ${roundInfo.round_order})`);
 
-      // Upsert event
+      // Upsert event with detected round
       const eventData = {
         external_event_id: event.id,
         competition_key,
-        round_key: 'regular', // Will be updated when matchups are created
+        round_key: roundInfo.round_key,
+        round_order: roundInfo.round_order,
         home_team: homeTeamInfo.code,
         away_team: awayTeamInfo.code,
         start_time: event.commence_time,
@@ -258,6 +360,7 @@ serve(async (req) => {
         success: true,
         events_synced: syncedEvents.length,
         lines_synced: syncedLines.length,
+        detected_round: referenceDate ? detectPlayoffRound(competition_key, referenceDate, totalGames) : null,
         events: syncedEvents,
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
