@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { useClaimGuestMemberships } from '@/hooks/useClaimGuestMemberships';
 
 interface AuthContextType {
   user: User | null;
@@ -16,6 +17,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+
+  // Auto-claim guest memberships when user authenticates
+  useClaimGuestMemberships(user);
 
   useEffect(() => {
     // Set up auth state listener FIRST

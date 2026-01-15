@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Copy, Check, Settings, Loader2, UserPlus } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, Settings, Loader2, UserPlus, ExternalLink, Rocket } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
@@ -95,6 +95,7 @@ interface LineData {
 const statusColors: Record<string, string> = {
   draft: 'bg-muted text-muted-foreground',
   lobby: 'bg-yellow-500/10 text-yellow-600',
+  lobby_full: 'bg-green-500/10 text-green-600',
   active: 'bg-green-500/10 text-green-600',
   completed: 'bg-blue-500/10 text-blue-600',
 };
@@ -102,6 +103,7 @@ const statusColors: Record<string, string> = {
 const statusLabels: Record<string, string> = {
   draft: 'Draft',
   lobby: 'Waiting for Players',
+  lobby_full: 'Ready to Start',
   active: 'In Progress',
   completed: 'Completed',
 };
@@ -114,6 +116,7 @@ export default function Pool() {
   const [members, setMembers] = useState<PoolMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [manageOpen, setManageOpen] = useState(false);
   const [isGuest, setIsGuest] = useState(false);
   const [guestDisplayName, setGuestDisplayName] = useState<string | null>(null);
@@ -432,6 +435,19 @@ export default function Pool() {
     }
   };
 
+  const copyShareLink = () => {
+    if (pool) {
+      const shareUrl = `${window.location.origin}/join/${pool.invite_code}`;
+      navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    }
+  };
+
+  // Determine if pool is full for status display
+  const isFull = pool ? (pool.max_players && members.length >= pool.max_players) : false;
+  const displayStatus = pool?.status === 'lobby' && isFull ? 'lobby_full' : pool?.status;
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
@@ -526,8 +542,8 @@ export default function Pool() {
                   </p>
                 </div>
               </div>
-              <Badge className={statusColors[pool.status]}>
-                {statusLabels[pool.status]}
+              <Badge className={statusColors[displayStatus || 'draft']}>
+                {statusLabels[displayStatus || 'draft']}
               </Badge>
             </div>
 
@@ -551,19 +567,41 @@ export default function Pool() {
               </div>
             </div>
 
+            {/* Commissioner Ready Prompt */}
+            {isCreator && pool.status === 'lobby' && isFull && (
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-green-500/10 border border-green-500/30 rounded-lg mb-4">
+                <Rocket className="h-6 w-6 text-green-600 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-green-600 mb-1">All players have joined!</p>
+                  <p className="text-xs text-muted-foreground">
+                    Click "Start Pool Setup" to sync games and start the competition.
+                  </p>
+                </div>
+                <Button size="sm" onClick={() => setManageOpen(true)} className="bg-green-600 hover:bg-green-700">
+                  Start Pool Setup
+                </Button>
+              </div>
+            )}
+
             {/* Invite Code (for lobby status) */}
             {pool.status === 'lobby' && (
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
                 <div className="flex-1">
-                  <p className="text-sm font-medium text-foreground mb-1">Invite Code</p>
-                  <p className="text-xs text-muted-foreground">Share this code with friends to join</p>
+                  <p className="text-sm font-medium text-foreground mb-1">Invite Friends</p>
+                  <p className="text-xs text-muted-foreground">Share the code or link with friends to join</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <code className="text-xl font-mono font-bold tracking-widest bg-background px-4 py-2 rounded">
-                    {pool.invite_code}
-                  </code>
-                  <Button size="icon" variant="ghost" onClick={copyInviteCode}>
-                    {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-1">
+                    <code className="text-lg font-mono font-bold tracking-widest bg-background px-3 py-1.5 rounded">
+                      {pool.invite_code}
+                    </code>
+                    <Button size="icon" variant="ghost" onClick={copyInviteCode} title="Copy code">
+                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={copyShareLink} className="gap-1.5">
+                    {copiedLink ? <Check className="h-3.5 w-3.5 text-green-500" /> : <ExternalLink className="h-3.5 w-3.5" />}
+                    {copiedLink ? 'Link Copied!' : 'Copy Link'}
                   </Button>
                 </div>
               </div>

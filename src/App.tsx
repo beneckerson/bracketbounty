@@ -32,7 +32,7 @@ const App = () => (
             <Route path="/join/:code" element={<JoinPool />} />
             <Route path="/create-pool" element={<ProtectedRoute><CreatePool /></ProtectedRoute>} />
             <Route path="/my-pools" element={<ProtectedRoute><MyPools /></ProtectedRoute>} />
-            <Route path="/pool/:poolId" element={<ProtectedRoute><Pool /></ProtectedRoute>} />
+            <Route path="/pool/:poolId" element={<Pool />} />
             {/* Admin routes */}
             <Route path="/admin/rosters" element={<ProtectedRoute><AdminRosters /></ProtectedRoute>} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
