@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -196,6 +196,14 @@ export default function CreatePool() {
   const teamCount = values.selectedTeams.length;
   const playerCount = values.maxPlayers;
 
+  // Auto-sync teamsPerPlayer when the math divides evenly
+  useEffect(() => {
+    if (teamCount > 0 && playerCount > 0 && teamCount % playerCount === 0) {
+      const computed = Math.floor(teamCount / playerCount);
+      form.setValue('teamsPerPlayer', computed);
+    }
+  }, [teamCount, playerCount, form]);
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -364,8 +372,8 @@ export default function CreatePool() {
                       <p className="text-muted-foreground">Set up your pool size and entry fee</p>
                     </div>
 
-                    {/* Max Players & Teams per Player - at the top */}
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Max Players */}
+                    <div className="space-y-4">
                       <FormField
                         control={form.control}
                         name="maxPlayers"
@@ -389,25 +397,15 @@ export default function CreatePool() {
                         )}
                       />
 
-                      <FormField
-                        control={form.control}
-                        name="teamsPerPlayer"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Teams per Player</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={1}
-                                max={4}
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      {/* Computed teams per player display (read-only) */}
+                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
+                        <span className="text-sm text-muted-foreground">Teams per player</span>
+                        <span className="font-medium">
+                          {teamCount > 0 && playerCount > 0 
+                            ? `${Math.floor(teamCount / playerCount)} team${Math.floor(teamCount / playerCount) !== 1 ? 's' : ''} each`
+                            : '—'}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Allocation Calculator - directly below the inputs */}
@@ -502,15 +500,11 @@ export default function CreatePool() {
                       </div>
                       <div className="flex justify-between py-3 border-b border-border">
                         <span className="text-muted-foreground">Teams per Player</span>
-                        <span className="font-medium">{values.teamsPerPlayer}</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Allocation Math</span>
                         <span className="font-medium">
-                          {values.selectedTeams.length} ÷ {values.maxPlayers} = {Math.floor(values.selectedTeams.length / values.maxPlayers)} each
+                          {Math.floor(values.selectedTeams.length / values.maxPlayers)} team{Math.floor(values.selectedTeams.length / values.maxPlayers) !== 1 ? 's' : ''} each
                           {values.selectedTeams.length % values.maxPlayers !== 0 && (
                             <span className="text-amber-500 ml-1">
-                              ({values.selectedTeams.length % values.maxPlayers} remainder)
+                              ({values.selectedTeams.length % values.maxPlayers} extra)
                             </span>
                           )}
                         </span>
@@ -573,7 +567,7 @@ export default function CreatePool() {
 
       {/* Success Dialog */}
       <Dialog open={showSuccess} onOpenChange={setShowSuccess}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <PartyPopper className="h-8 w-8 text-primary" />
@@ -585,11 +579,11 @@ export default function CreatePool() {
           </DialogHeader>
           
           {/* Primary: Share Link */}
-          <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
-            <code className="flex-1 text-sm font-mono text-center truncate">
+          <div className="flex items-center gap-2 p-3 bg-muted rounded-lg">
+            <code className="flex-1 text-sm font-mono break-all leading-relaxed">
               {window.location.origin}/join/{createdPool?.inviteCode}
             </code>
-            <Button size="icon" variant="ghost" onClick={copyShareLink}>
+            <Button size="icon" variant="ghost" className="flex-shrink-0" onClick={copyShareLink}>
               {copiedLink ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
