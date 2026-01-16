@@ -49,6 +49,7 @@ export default function CreatePool() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [createdPool, setCreatedPool] = useState<{ id: string; inviteCode: string } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -174,6 +175,15 @@ export default function CreatePool() {
       navigator.clipboard.writeText(createdPool.inviteCode);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const copyShareLink = () => {
+    if (createdPool) {
+      const shareUrl = `${window.location.origin}/join/${createdPool.inviteCode}`;
+      navigator.clipboard.writeText(shareUrl);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
     }
   };
 
@@ -570,16 +580,26 @@ export default function CreatePool() {
             </div>
             <DialogTitle className="text-center text-2xl">Pool Created!</DialogTitle>
             <DialogDescription className="text-center">
-              Share this invite code with your friends to join the pool.
+              Share this link with your friends to join the pool.
             </DialogDescription>
           </DialogHeader>
           
+          {/* Primary: Share Link */}
           <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
-            <code className="flex-1 text-2xl font-mono font-bold text-center tracking-widest">
-              {createdPool?.inviteCode}
+            <code className="flex-1 text-sm font-mono text-center truncate">
+              {window.location.origin}/join/{createdPool?.inviteCode}
             </code>
-            <Button size="icon" variant="ghost" onClick={copyInviteCode}>
-              {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            <Button size="icon" variant="ghost" onClick={copyShareLink}>
+              {copiedLink ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {/* Secondary: Code */}
+          <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+            <span>Or share the code:</span>
+            <code className="font-mono font-bold tracking-widest">{createdPool?.inviteCode}</code>
+            <Button size="icon" variant="ghost" className="h-6 w-6" onClick={copyInviteCode}>
+              {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
             </Button>
           </div>
 

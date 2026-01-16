@@ -583,25 +583,33 @@ export default function Pool() {
               </div>
             )}
 
-            {/* Invite Code (for lobby status) */}
+            {/* Invite Link (for lobby status) */}
             {pool.status === 'lobby' && (
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                <div className="flex-1">
+              <div className="flex flex-col gap-3 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+                <div>
                   <p className="text-sm font-medium text-foreground mb-1">Invite Friends</p>
-                  <p className="text-xs text-muted-foreground">Share the code or link with friends to join</p>
+                  <p className="text-xs text-muted-foreground">Share this link with friends to join your pool</p>
                 </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <div className="flex items-center gap-1">
-                    <code className="text-lg font-mono font-bold tracking-widest bg-background px-3 py-1.5 rounded">
-                      {pool.invite_code}
+                
+                {/* Primary: Share Link */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 flex items-center gap-2 bg-background px-3 py-2 rounded-lg">
+                    <code className="flex-1 text-sm font-mono truncate">
+                      {window.location.origin}/join/{pool.invite_code}
                     </code>
-                    <Button size="icon" variant="ghost" onClick={copyInviteCode} title="Copy code">
-                      {copied ? <Check className="h-4 w-4 text-green-500" /> : <Copy className="h-4 w-4" />}
+                    <Button size="sm" onClick={copyShareLink} className="gap-1.5 shrink-0">
+                      {copiedLink ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copiedLink ? 'Copied!' : 'Copy Link'}
                     </Button>
                   </div>
-                  <Button size="sm" variant="outline" onClick={copyShareLink} className="gap-1.5">
-                    {copiedLink ? <Check className="h-3.5 w-3.5 text-green-500" /> : <ExternalLink className="h-3.5 w-3.5" />}
-                    {copiedLink ? 'Link Copied!' : 'Copy Link'}
+                </div>
+
+                {/* Secondary: Code */}
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span>Or share code:</span>
+                  <code className="font-mono font-bold tracking-widest">{pool.invite_code}</code>
+                  <Button size="icon" variant="ghost" className="h-6 w-6" onClick={copyInviteCode} title="Copy code">
+                    {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
                   </Button>
                 </div>
               </div>
