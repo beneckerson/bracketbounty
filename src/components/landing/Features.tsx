@@ -4,7 +4,7 @@ const features = [
   {
     icon: Sparkles,
     title: 'Capture Mode',
-    description: 'Winners capture the loser\'s team(s) and carry them through the tournament. Watch empires build.',
+    description: 'When a team covers the spread, you capture your opponent\'s teams. Underdogs can capture even when they lose. Watch empires build.',
     color: 'text-capture',
   },
   {
@@ -16,7 +16,7 @@ const features = [
   {
     icon: Users,
     title: 'Private Pools',
-    description: 'Invite-only pools for your group. Share a code, assign teams randomly or draft, compete.',
+    description: 'Invite-only pools for your group. Share a link, teams are randomly assigned, then compete.',
     color: 'text-primary',
   },
   {
@@ -34,7 +34,7 @@ const features = [
   {
     icon: Zap,
     title: 'Real-time Updates',
-    description: 'Scores update live. Ownership transfers instantly. Everyone sees results together.',
+    description: 'Scores are updated and team ownership transfers instantly. Everyone sees results together.',
     color: 'text-accent',
   },
 ];
