@@ -55,10 +55,33 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
   const [awayScore, setAwayScore] = useState('');
   const [commissionerNote, setCommissionerNote] = useState('');
 
+  // Round name lookup helper
+  const getRoundName = (roundKey: string | undefined): string => {
+    if (!roundKey) return '-';
+    const roundNames: Record<string, string> = {
+      wild_card: 'Wild Card',
+      divisional: 'Divisional',
+      conference: 'Conference Championship',
+      super_bowl: 'Super Bowl',
+      first_round: 'First Round',
+      quarterfinals: 'Quarterfinals',
+      semifinals: 'Semifinals',
+      championship: 'Championship',
+      second_round: 'Conference Semifinals',
+      conference_finals: 'Conference Finals',
+      finals: 'Finals',
+      division: 'Division Series',
+      world_series: 'World Series',
+      stanley_cup: 'Stanley Cup Final',
+    };
+    return roundNames[roundKey] || roundKey;
+  };
+
   const fetchMatchups = async () => {
     setLoading(true);
     
     // Fetch matchups for active pools in this competition
+    // Use event's round_key for accurate round display (not frozen pool_rounds)
     const { data, error } = await supabase
       .from('pool_matchups')
       .select(`
@@ -70,8 +93,7 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
         decided_at,
         commissioner_note,
         pool:pools!inner(id, name, mode, scoring_rule, competition_key, status),
-        event:events(id, home_team, away_team, start_time, status, final_home_score, final_away_score),
-        round:pool_rounds(name, round_order)
+        event:events(id, home_team, away_team, start_time, status, final_home_score, final_away_score, round_key, round_order)
       `)
       .eq('pools.competition_key', competitionKey)
       .eq('pools.status', 'active')
@@ -86,7 +108,6 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
         ...m,
         pool: m.pool,
         event: m.event,
-        round: m.round,
       }));
       setMatchups(transformed);
     }
@@ -206,7 +227,7 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
                   {unresolvedMatchups.map((matchup) => (
                     <TableRow key={matchup.id}>
                       <TableCell className="font-medium">{matchup.pool.name}</TableCell>
-                      <TableCell>{matchup.round?.name || '-'}</TableCell>
+                      <TableCell>{getRoundName(matchup.event?.round_key)}</TableCell>
                       <TableCell>
                         {matchup.event ? (
                           <span>
@@ -266,7 +287,7 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
                   {resolvedMatchups.map((matchup) => (
                     <TableRow key={matchup.id}>
                       <TableCell className="font-medium">{matchup.pool.name}</TableCell>
-                      <TableCell>{matchup.round?.name || '-'}</TableCell>
+                      <TableCell>{getRoundName(matchup.event?.round_key)}</TableCell>
                       <TableCell>
                         {matchup.event ? (
                           <span>
@@ -308,7 +329,7 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
                 <>
                   {selectedMatchup.event.away_team} @ {selectedMatchup.event.home_team}
                   <br />
-                  <span className="text-xs">Pool: {selectedMatchup.pool.name} • {selectedMatchup.round?.name}</span>
+                  <span className="text-xs">Pool: {selectedMatchup.pool.name} • {getRoundName(selectedMatchup.event.round_key)}</span>
                 </>
               )}
             </DialogDescription>
