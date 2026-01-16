@@ -26,6 +26,7 @@ export function OwnedTeamsList({ members, className }: OwnedTeamsListProps) {
           >
             <div className="flex items-center gap-3 mb-2">
               <OwnerAvatar
+                participantId={member.participant.id}
                 displayName={member.participant.displayName}
                 initials={member.participant.initials}
                 avatarUrl={member.participant.avatarUrl}
@@ -73,6 +74,7 @@ export function OwnedTeamsList({ members, className }: OwnedTeamsListProps) {
             className="flex items-center gap-2 px-3 py-1.5 bg-muted rounded-full opacity-60"
           >
             <OwnerAvatar
+              participantId={member.participant.id}
               displayName={member.participant.displayName}
               initials={member.participant.initials}
               avatarUrl={member.participant.avatarUrl}

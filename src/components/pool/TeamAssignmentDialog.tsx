@@ -1,6 +1,7 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { OwnerAvatar } from '@/components/ui/owner-avatar';
 import { Sparkles, Trophy, Users } from 'lucide-react';
 
 interface TeamAssignment {
@@ -63,11 +64,12 @@ export function TeamAssignmentDialog({
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-                    <span className="text-sm font-bold text-primary">
-                      {name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
+                  <OwnerAvatar
+                    participantId={memberId}
+                    displayName={name}
+                    initials={name.charAt(0).toUpperCase()}
+                    size="md"
+                  />
                   <h3 className="font-medium text-foreground">{name}</h3>
                   <span className="text-xs text-muted-foreground ml-auto">
                     {teams.length} team{teams.length !== 1 ? 's' : ''}
