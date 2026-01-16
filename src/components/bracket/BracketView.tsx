@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { Pool } from '@/lib/types';
+import type { Pool, AuditLogEntry } from '@/lib/types';
 import { RoundTabs } from './RoundTabs';
 import { MatchupCard } from './MatchupCard';
 import { OwnedTeamsList } from './OwnedTeamsList';
 import { AuditDrawer } from './AuditDrawer';
-import { demoAuditLog } from '@/lib/demo-data';
 import { Trophy, Users, Sparkles } from 'lucide-react';
 
 interface BracketViewProps {
   pool: Pool;
+  auditLogs: AuditLogEntry[];
 }
 
-export function BracketView({ pool }: BracketViewProps) {
+export function BracketView({ pool, auditLogs }: BracketViewProps) {
   const [activeRoundId, setActiveRoundId] = useState(pool.rounds[0]?.id || '');
   
   const activeRound = pool.rounds.find(r => r.id === activeRoundId);
@@ -45,7 +45,7 @@ export function BracketView({ pool }: BracketViewProps) {
                 )}
               </div>
             </div>
-            <AuditDrawer logs={demoAuditLog} />
+            <AuditDrawer logs={auditLogs} />
           </div>
         </div>
       </header>

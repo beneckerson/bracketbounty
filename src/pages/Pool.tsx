@@ -9,7 +9,8 @@ import { BracketView } from '@/components/bracket/BracketView';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
-import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam } from '@/lib/types';
+import { transformAuditLogs } from '@/lib/audit-utils';
+import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, AuditLogEntry } from '@/lib/types';
 
 interface PoolData {
   id: string;
@@ -123,6 +124,7 @@ export default function Pool() {
   
   // Bracket data
   const [bracketPool, setBracketPool] = useState<PoolType | null>(null);
+  const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loadingBracket, setLoadingBracket] = useState(false);
 
   const isCreator = pool?.created_by === user?.id;
@@ -416,6 +418,26 @@ export default function Pool() {
       };
 
       setBracketPool(fullPool);
+
+      // Fetch audit logs
+      const { data: rawAuditLogs } = await supabase
+        .from('audit_log')
+        .select('*')
+        .eq('pool_id', poolId)
+        .order('created_at', { ascending: false });
+
+      // Build member name map for readable descriptions
+      const memberNameMap: Record<string, string> = {};
+      membersData.forEach(m => {
+        memberNameMap[m.id] = m.display_name;
+        if (m.user_id) {
+          memberNameMap[m.user_id] = m.display_name;
+        }
+      });
+
+      // Transform raw logs to AuditLogEntry format
+      const transformedLogs = transformAuditLogs(rawAuditLogs || [], memberNameMap);
+      setAuditLogs(transformedLogs);
     } catch (error) {
       console.error('Error fetching bracket data:', error);
     } finally {
@@ -485,7 +507,7 @@ export default function Pool() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="pt-20">
-          <BracketView pool={bracketPool} />
+          <BracketView pool={bracketPool} auditLogs={auditLogs} />
         </main>
       </div>
     );

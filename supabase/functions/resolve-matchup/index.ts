@@ -228,33 +228,64 @@ serve(async (req) => {
       }
     }
 
-    // Write audit log entry
+    // Write audit log entry with detailed payload
     const { data: winnerMember } = await supabase
       .from('pool_members')
       .select('display_name')
       .eq('id', winnerMemberId)
       .single();
 
-    const auditDescription = resultType === 'UPSET'
-      ? `${winnerMember?.display_name || 'Unknown'}'s underdog won outright and captured opponent's team (UPSET)`
-      : resultType === 'CAPTURED'
-      ? `${winnerMember?.display_name || 'Unknown'}'s underdog covered the spread and captured opponent's team despite losing`
-      : `${winnerMember?.display_name || 'Unknown'}'s team advances to the next round`;
+    // Get team names for better audit descriptions
+    const { data: teamsData } = await supabase
+      .from('teams')
+      .select('code, name')
+      .in('code', [event?.home_team, event?.away_team].filter(Boolean));
+    
+    const teamNames: Record<string, string> = {};
+    teamsData?.forEach(t => { teamNames[t.code] = t.name; });
+
+    // Determine underdog/favorite for audit payload
+    const homeIsUnderdog = lockedSpread && lockedSpread.home_spread > 0;
+    const underdogTeamCode = homeIsUnderdog ? event?.home_team : event?.away_team;
+    const favoriteTeamCode = homeIsUnderdog ? event?.away_team : event?.home_team;
+    const underdogSpread = homeIsUnderdog ? lockedSpread?.home_spread : lockedSpread?.away_spread;
+    const underdogOwnerId = homeIsUnderdog ? homeOwner?.member_id : awayOwner?.member_id;
+    const favoriteOwnerId = homeIsUnderdog ? awayOwner?.member_id : homeOwner?.member_id;
+
+    // Build comprehensive audit payload
+    const auditPayload: Record<string, unknown> = {
+      matchup_id,
+      winner_member_id: winnerMemberId,
+      decided_by: decidedBy,
+      result_type: resultType,
+      home_score: finalHomeScore,
+      away_score: finalAwayScore,
+      spread: lockedSpread,
+      winner_team: teamNames[winnerMemberId === homeOwner?.member_id ? event?.home_team! : event?.away_team!] || 'Unknown',
+      loser_team: teamNames[winnerMemberId === homeOwner?.member_id ? event?.away_team! : event?.home_team!] || 'Unknown',
+    };
+
+    // Add capture-specific data for CAPTURED result type
+    if (resultType === 'CAPTURED') {
+      auditPayload.capturer_id = underdogOwnerId;
+      auditPayload.captured_from_id = favoriteOwnerId;
+      auditPayload.underdog_team = teamNames[underdogTeamCode!] || underdogTeamCode;
+      auditPayload.favorite_team = teamNames[favoriteTeamCode!] || favoriteTeamCode;
+      auditPayload.underdog_spread = underdogSpread;
+    }
+
+    // Add upset-specific data
+    if (resultType === 'UPSET') {
+      auditPayload.underdog_team = teamNames[underdogTeamCode!] || underdogTeamCode;
+      auditPayload.underdog_spread = underdogSpread;
+    }
 
     await supabase
       .from('audit_log')
       .insert({
         pool_id: pool.id,
         action_type: 'matchup_resolved',
-        payload: {
-          matchup_id,
-          winner_member_id: winnerMemberId,
-          decided_by: decidedBy,
-          result_type: resultType,
-          home_score: finalHomeScore,
-          away_score: finalAwayScore,
-          spread: lockedSpread,
-        },
+        payload: auditPayload,
       });
 
     console.log(`Matchup resolved: ${resultType}, Winner: ${winnerMemberId}`);
