@@ -37,11 +37,9 @@ interface MatchupWithDetails {
     status: string;
     final_home_score: number | null;
     final_away_score: number | null;
-  } | null;
-  round: {
-    name: string;
+    round_key: string;
     round_order: number;
-  };
+  } | null;
 }
 
 interface MatchupResolverProps {
