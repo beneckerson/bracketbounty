@@ -1,9 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { ArrowLeft, ArrowRight, Loader2, Copy, Check, PartyPopper } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Loader2, Copy, Check, PartyPopper, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,10 +15,12 @@ import { Header } from '@/components/layout/Header';
 import { CompetitionSelector } from '@/components/pool/CompetitionSelector';
 import { TeamSelector } from '@/components/pool/TeamSelector';
 import { AllocationCalculator } from '@/components/pool/AllocationCalculator';
+import { MatchupPreview, groupMatchupsByRound, type MatchupPreviewData } from '@/components/pool/MatchupPreview';
 import { getCompetition, CompetitionConfig } from '@/lib/competitions';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import type { Team } from '@/lib/types';
 
 const poolSchema = z.object({
   competitionKey: z.string().min(1, 'Please select a competition'),
@@ -50,6 +52,11 @@ export default function CreatePool() {
   const [createdPool, setCreatedPool] = useState<{ id: string; inviteCode: string } | null>(null);
   const [copied, setCopied] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  
+  // Matchup preview data for Review step
+  const [matchupPreviews, setMatchupPreviews] = useState<MatchupPreviewData[]>([]);
+  const [loadingMatchups, setLoadingMatchups] = useState(false);
+  const [teamsMap, setTeamsMap] = useState<Record<string, Team>>({});
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -203,6 +210,95 @@ export default function CreatePool() {
       form.setValue('teamsPerPlayer', computed);
     }
   }, [teamCount, playerCount, form]);
+
+  // Fetch matchups and teams when entering step 5
+  useEffect(() => {
+    const fetchMatchupsForPreview = async () => {
+      if (currentStep !== 5 || !selectedCompetition || values.selectedTeams.length === 0) return;
+      
+      setLoadingMatchups(true);
+      try {
+        // Fetch events for this competition
+        const { data: events } = await supabase
+          .from('events')
+          .select('id, home_team, away_team, round_key, round_order, start_time')
+          .eq('competition_key', selectedCompetition.key)
+          .order('round_order', { ascending: true })
+          .order('start_time', { ascending: true });
+        
+        // Fetch teams data
+        const { data: teamsData } = await supabase
+          .from('teams')
+          .select('code, name, abbreviation, color');
+        
+        // Fetch roster with seeds
+        const { data: rosterData } = await supabase
+          .from('competition_rosters')
+          .select('team_code, seed')
+          .eq('competition_key', selectedCompetition.key)
+          .eq('season', selectedCompetition.season);
+        
+        // Build seed map
+        const seedMap: Record<string, number> = {};
+        (rosterData || []).forEach(r => {
+          seedMap[r.team_code] = r.seed || 0;
+        });
+        
+        // Build teams map with seeds
+        const tMap: Record<string, Team> = {};
+        (teamsData || []).forEach(t => {
+          tMap[t.code] = {
+            code: t.code,
+            name: t.name,
+            abbreviation: t.abbreviation,
+            seed: seedMap[t.code] || 0,
+            color: t.color || 'team-navy',
+          };
+        });
+        setTeamsMap(tMap);
+        
+        // Filter events where BOTH teams are selected
+        const selectedSet = new Set(values.selectedTeams);
+        const relevantEvents = (events || []).filter(e => 
+          selectedSet.has(e.home_team) && selectedSet.has(e.away_team)
+        );
+        
+        // Transform to MatchupPreviewData
+        const previews: MatchupPreviewData[] = relevantEvents.map(e => ({
+          id: e.id,
+          awayTeam: tMap[e.away_team] || { code: e.away_team, name: e.away_team, abbreviation: e.away_team.substring(0, 3).toUpperCase(), seed: 0, color: 'team-navy' },
+          homeTeam: tMap[e.home_team] || { code: e.home_team, name: e.home_team, abbreviation: e.home_team.substring(0, 3).toUpperCase(), seed: 0, color: 'team-navy' },
+          startTime: e.start_time ? new Date(e.start_time) : null,
+          roundKey: e.round_key,
+        }));
+        
+        setMatchupPreviews(previews);
+      } catch (error) {
+        console.error('Error fetching matchups for preview:', error);
+      } finally {
+        setLoadingMatchups(false);
+      }
+    };
+    
+    fetchMatchupsForPreview();
+  }, [currentStep, selectedCompetition, values.selectedTeams]);
+  
+  // Group matchups by round for display
+  const groupedMatchups = useMemo(() => groupMatchupsByRound(matchupPreviews), [matchupPreviews]);
+  const roundKeys = useMemo(() => Object.keys(groupedMatchups).sort(), [groupedMatchups]);
+  
+  // Human-readable round names
+  const roundDisplayNames: Record<string, string> = {
+    'wild_card': 'Wild Card Round',
+    'divisional': 'Divisional Round',
+    'conference_championship': 'Conference Championships',
+    'super_bowl': 'Super Bowl',
+    'first_round': 'First Round',
+    'second_round': 'Second Round',
+    'quarterfinals': 'Quarterfinals',
+    'semifinals': 'Semifinals',
+    'finals': 'Finals',
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -461,60 +557,103 @@ export default function CreatePool() {
                 {/* Step 5: Review */}
                 {currentStep === 5 && selectedCompetition && (
                   <div className="space-y-6">
-                    <div>
-                      <h2 className="text-2xl font-display text-foreground mb-2">Review Your Pool</h2>
-                      <p className="text-muted-foreground">Confirm everything looks good</p>
+                    {/* Pool Header - mirrors Pool.tsx */}
+                    <div className="flex items-center gap-4 mb-2">
+                      <span className="text-5xl">{selectedCompetition.icon}</span>
+                      <div>
+                        <h1 className="text-2xl font-bebas text-foreground tracking-wide">{values.name || 'Untitled Pool'}</h1>
+                        <p className="text-muted-foreground">
+                          {selectedCompetition.name} • {selectedCompetition.season}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="space-y-4">
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Competition</span>
-                        <span className="font-medium">{selectedCompetition.name}</span>
+                    {/* Stat Cards Grid - mirrors Pool.tsx */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Mode</p>
+                        <p className="font-medium capitalize">{values.mode}</p>
                       </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Pool Name</span>
-                        <span className="font-medium">{values.name || '—'}</span>
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Scoring</p>
+                        <p className="font-medium">{values.mode === 'capture' ? 'ATS' : 'Straight'}</p>
                       </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Mode</span>
-                        <span className="font-medium">
-                          {values.mode === 'capture' ? 'Capture Mode (Spreads)' : 'Standard Mode (Straight-up)'}
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Buy-in</p>
+                        <p className="font-medium">{buyinDisplay}</p>
+                      </div>
+                      <div className="bg-muted/50 rounded-lg p-3">
+                        <p className="text-xs text-muted-foreground mb-1">Allocation</p>
+                        <p className="font-medium capitalize">{values.allocationMethod}</p>
+                      </div>
+                    </div>
+                    
+                    {/* Player/Team Summary */}
+                    <div className="flex items-center justify-between p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">👥</span>
+                        <span className="text-sm font-medium">
+                          {values.maxPlayers} players • {Math.floor(values.selectedTeams.length / values.maxPlayers)} team{Math.floor(values.selectedTeams.length / values.maxPlayers) !== 1 ? 's' : ''} each
                         </span>
                       </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Teams Selected</span>
-                        <span className="font-medium">{values.selectedTeams.length} teams</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Buy-in</span>
-                        <span className="font-medium">{buyinDisplay}</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Max Players</span>
-                        <span className="font-medium">{values.maxPlayers}</span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Teams per Player</span>
-                        <span className="font-medium">
-                          {Math.floor(values.selectedTeams.length / values.maxPlayers)} team{Math.floor(values.selectedTeams.length / values.maxPlayers) !== 1 ? 's' : ''} each
-                          {values.selectedTeams.length % values.maxPlayers !== 0 && (
-                            <span className="text-amber-500 ml-1">
-                              ({values.selectedTeams.length % values.maxPlayers} extra)
-                            </span>
-                          )}
+                      {values.selectedTeams.length % values.maxPlayers !== 0 && (
+                        <span className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded">
+                          {values.selectedTeams.length % values.maxPlayers} lowest-seeded excluded
                         </span>
-                      </div>
-                      <div className="flex justify-between py-3 border-b border-border">
-                        <span className="text-muted-foreground">Allocation</span>
-                        <span className="font-medium capitalize">{values.allocationMethod}</span>
-                      </div>
-                      {values.payoutNote && (
-                        <div className="py-3">
-                          <span className="text-muted-foreground block mb-1">Payout Note</span>
-                          <span className="text-sm">{values.payoutNote}</span>
-                        </div>
                       )}
                     </div>
+
+                    {/* Matchups Section */}
+                    <div className="space-y-4">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <h3 className="font-medium text-foreground">Matchups</h3>
+                        <span className="text-xs text-muted-foreground">
+                          ({matchupPreviews.length} game{matchupPreviews.length !== 1 ? 's' : ''})
+                        </span>
+                      </div>
+                      
+                      {loadingMatchups ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : matchupPreviews.length > 0 ? (
+                        <div className="space-y-4">
+                          {roundKeys.map(roundKey => (
+                            <div key={roundKey} className="space-y-2">
+                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                                {roundDisplayNames[roundKey] || roundKey.replace(/_/g, ' ')}
+                              </p>
+                              <div className="space-y-2">
+                                {groupedMatchups[roundKey].map(matchup => (
+                                  <MatchupPreview key={matchup.id} matchup={matchup} />
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground text-sm">
+                          <p>No matchups scheduled yet for selected teams.</p>
+                          <p className="text-xs mt-1">Matchups will appear once games are synced.</p>
+                        </div>
+                      )}
+                      
+                      {/* Later rounds note */}
+                      {matchupPreviews.length > 0 && (
+                        <p className="text-xs text-muted-foreground italic">
+                          Later rounds will be determined as teams advance.
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Payout Note */}
+                    {values.payoutNote && (
+                      <div className="p-3 bg-muted/50 rounded-lg">
+                        <p className="text-xs text-muted-foreground mb-1">Payout Structure</p>
+                        <p className="text-sm">{values.payoutNote}</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
