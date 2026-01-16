@@ -4,6 +4,7 @@ export interface AllocationResult {
   isValid: boolean;
   teamsPerPlayer: number;
   remainder: number;
+  excludedCount: number;
   suggestions: AllocationSuggestion[];
 }
 
@@ -18,19 +19,33 @@ export interface AllocationSuggestion {
  */
 export function calculateAllocation(teamCount: number, playerCount: number): AllocationResult {
   if (playerCount <= 0 || teamCount <= 0) {
-    return { isValid: false, teamsPerPlayer: 0, remainder: 0, suggestions: [] };
+    return { isValid: false, teamsPerPlayer: 0, remainder: 0, excludedCount: 0, suggestions: [] };
   }
 
   const teamsPerPlayer = Math.floor(teamCount / playerCount);
   const remainder = teamCount % playerCount;
 
   if (remainder === 0 && teamsPerPlayer >= 1) {
-    return { isValid: true, teamsPerPlayer, remainder, suggestions: [] };
+    return { isValid: true, teamsPerPlayer, remainder, excludedCount: 0, suggestions: [] };
   }
 
   // Generate suggestions for valid configurations
   const suggestions = findValidConfigurations(teamCount, playerCount);
-  return { isValid: false, teamsPerPlayer, remainder, suggestions };
+  return { isValid: false, teamsPerPlayer, remainder, excludedCount: remainder, suggestions };
+}
+
+/**
+ * Get valid player count divisors for quick-pick buttons
+ */
+export function getValidDivisors(teamCount: number): number[] {
+  if (teamCount <= 0) return [];
+  const divisors: number[] = [];
+  for (let p = 2; p <= teamCount && p <= 16; p++) {
+    if (teamCount % p === 0) {
+      divisors.push(p);
+    }
+  }
+  return divisors;
 }
 
 /**
