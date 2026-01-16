@@ -354,41 +354,7 @@ export default function CreatePool() {
                       <p className="text-muted-foreground">Set up your pool size and entry fee</p>
                     </div>
 
-                    {/* Allocation Calculator */}
-                    {teamCount > 0 && (
-                      <AllocationCalculator
-                        teamCount={teamCount}
-                        playerCount={playerCount}
-                        onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
-                      />
-                    )}
-
-                    <FormField
-                      control={form.control}
-                      name="buyinAmountCents"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Buy-in Amount (optional)</FormLabel>
-                          <FormControl>
-                            <div className="relative">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
-                              <Input
-                                type="number"
-                                min={0}
-                                max={1000}
-                                placeholder="0"
-                                className="pl-8"
-                                value={field.value / 100 || ''}
-                                onChange={(e) => field.onChange(Number(e.target.value) * 100)}
-                              />
-                            </div>
-                          </FormControl>
-                          <FormDescription>Leave at $0 for a free pool</FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
+                    {/* Max Players & Teams per Player - at the top */}
                     <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={form.control}
@@ -434,46 +400,36 @@ export default function CreatePool() {
                       />
                     </div>
 
+                    {/* Allocation Calculator - directly below the inputs */}
+                    {teamCount > 0 && (
+                      <AllocationCalculator
+                        teamCount={teamCount}
+                        playerCount={playerCount}
+                        onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
+                      />
+                    )}
+
                     <FormField
                       control={form.control}
-                      name="allocationMethod"
+                      name="buyinAmountCents"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Team Allocation</FormLabel>
+                          <FormLabel>Buy-in Amount (optional)</FormLabel>
                           <FormControl>
-                            <RadioGroup
-                              value={field.value}
-                              onValueChange={field.onChange}
-                              className="grid grid-cols-2 gap-4"
-                            >
-                              <div>
-                                <RadioGroupItem value="random" id="random" className="peer sr-only" />
-                                <Label
-                                  htmlFor="random"
-                                  className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                                >
-                                  <span className="text-2xl mb-2">🎲</span>
-                                  <span className="font-medium">Random</span>
-                                  <span className="text-xs text-muted-foreground text-center mt-1">
-                                    Teams assigned randomly
-                                  </span>
-                                </Label>
-                              </div>
-                              <div>
-                                <RadioGroupItem value="draft" id="draft" className="peer sr-only" />
-                                <Label
-                                  htmlFor="draft"
-                                  className="flex flex-col items-center justify-between rounded-lg border-2 border-muted bg-popover p-4 hover:bg-accent hover:text-accent-foreground peer-data-[state=checked]:border-primary [&:has([data-state=checked])]:border-primary cursor-pointer"
-                                >
-                                  <span className="text-2xl mb-2">📋</span>
-                                  <span className="font-medium">Draft</span>
-                                  <span className="text-xs text-muted-foreground text-center mt-1">
-                                    Players pick teams
-                                  </span>
-                                </Label>
-                              </div>
-                            </RadioGroup>
+                            <div className="relative">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">$</span>
+                              <Input
+                                type="number"
+                                min={0}
+                                max={1000}
+                                placeholder="0"
+                                className="pl-8"
+                                value={field.value / 100 || ''}
+                                onChange={(e) => field.onChange(Number(e.target.value) * 100)}
+                              />
+                            </div>
                           </FormControl>
+                          <FormDescription>Leave at $0 for a free pool</FormDescription>
                           <FormMessage />
                         </FormItem>
                       )}
