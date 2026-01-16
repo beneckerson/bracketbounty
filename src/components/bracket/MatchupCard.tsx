@@ -4,7 +4,6 @@ import { SeedBadge } from './SeedBadge';
 import { TeamBar } from './TeamBar';
 import { StatusBadge } from './StatusBadge';
 import { OwnerAvatar } from '@/components/ui/owner-avatar';
-import { getParticipantByMemberId } from '@/lib/demo-data';
 import { Trophy, TrendingUp, TrendingDown, Clock } from 'lucide-react';
 import { format, isToday, isTomorrow } from 'date-fns';
 
@@ -54,8 +53,11 @@ function didCoverSpread(
 }
 
 export function MatchupCard({ matchup, pool, showCapture = true, className, onClick }: MatchupCardProps) {
-  const participantA = getParticipantByMemberId(pool, matchup.teamA.ownerId);
-  const participantB = getParticipantByMemberId(pool, matchup.teamB.ownerId);
+  // Find participant from pool members directly (works for both demo and real pools)
+  const memberA = pool.members.find(m => m.id === matchup.teamA.ownerId);
+  const memberB = pool.members.find(m => m.id === matchup.teamB.ownerId);
+  const participantA = memberA?.participant;
+  const participantB = memberB?.participant;
   
   const isTeamAWinner = matchup.winnerId === matchup.teamA.ownerId;
   const isTeamBWinner = matchup.winnerId === matchup.teamB.ownerId;
