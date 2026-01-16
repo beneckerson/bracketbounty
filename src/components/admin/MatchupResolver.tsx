@@ -13,33 +13,18 @@ import { Loader2, CheckCircle, AlertCircle, Gavel, RefreshCw } from 'lucide-reac
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
-interface MatchupWithDetails {
+interface EventWithPools {
   id: string;
-  round_id: string;
-  event_id: string;
-  winner_member_id: string | null;
-  decided_by: string | null;
-  decided_at: string | null;
-  commissioner_note: string | null;
-  pool: {
-    id: string;
-    name: string;
-    mode: string;
-    scoring_rule: string;
-    competition_key: string;
-    status: string;
-  };
-  event: {
-    id: string;
-    home_team: string;
-    away_team: string;
-    start_time: string | null;
-    status: string;
-    final_home_score: number | null;
-    final_away_score: number | null;
-    round_key: string;
-    round_order: number;
-  } | null;
+  home_team: string;
+  away_team: string;
+  start_time: string | null;
+  status: string;
+  final_home_score: number | null;
+  final_away_score: number | null;
+  round_key: string;
+  round_order: number;
+  affected_pools: string[];
+  pending_matchup_count: number;
 }
 
 interface MatchupResolverProps {
@@ -47,10 +32,10 @@ interface MatchupResolverProps {
 }
 
 export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
-  const [matchups, setMatchups] = useState<MatchupWithDetails[]>([]);
+  const [events, setEvents] = useState<EventWithPools[]>([]);
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
-  const [selectedMatchup, setSelectedMatchup] = useState<MatchupWithDetails | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<EventWithPools | null>(null);
   const [homeScore, setHomeScore] = useState('');
   const [awayScore, setAwayScore] = useState('');
   const [commissionerNote, setCommissionerNote] = useState('');
@@ -77,56 +62,92 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
     return roundNames[roundKey] || roundKey;
   };
 
-  const fetchMatchups = async () => {
+  const fetchEvents = async () => {
     setLoading(true);
     
-    // Fetch matchups for active pools in this competition
-    // Use event's round_key for accurate round display (not frozen pool_rounds)
-    const { data, error } = await supabase
+    // Fetch events for this competition that have pending matchups in active pools
+    const { data: matchups, error } = await supabase
       .from('pool_matchups')
       .select(`
         id,
-        round_id,
         event_id,
         winner_member_id,
-        decided_by,
-        decided_at,
-        commissioner_note,
-        pool:pools!inner(id, name, mode, scoring_rule, competition_key, status),
-        event:events(id, home_team, away_team, start_time, status, final_home_score, final_away_score, round_key, round_order)
+        pool:pools!inner(id, name, competition_key, status)
       `)
       .eq('pools.competition_key', competitionKey)
-      .eq('pools.status', 'active')
-      .order('decided_at', { ascending: true, nullsFirst: true });
+      .eq('pools.status', 'active');
 
     if (error) {
       console.error('Error fetching matchups:', error);
       toast.error('Failed to load matchups');
-    } else {
-      // Transform to expected shape
-      const transformed = (data || []).map((m: any) => ({
-        ...m,
-        pool: m.pool,
-        event: m.event,
-      }));
-      setMatchups(transformed);
+      setLoading(false);
+      return;
     }
+
+    // Get unique event IDs
+    const eventIds = [...new Set((matchups || []).map(m => m.event_id).filter(Boolean))];
+    
+    if (eventIds.length === 0) {
+      setEvents([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch events
+    const { data: eventsData, error: eventsError } = await supabase
+      .from('events')
+      .select('*')
+      .in('id', eventIds)
+      .order('round_order', { ascending: true })
+      .order('start_time', { ascending: true });
+
+    if (eventsError) {
+      console.error('Error fetching events:', eventsError);
+      toast.error('Failed to load events');
+      setLoading(false);
+      return;
+    }
+
+    // Group matchups by event and calculate affected pools
+    const eventMap = new Map<string, EventWithPools>();
+    
+    for (const event of eventsData || []) {
+      const eventMatchups = (matchups || []).filter(m => m.event_id === event.id);
+      const pendingMatchups = eventMatchups.filter(m => !m.winner_member_id);
+      const affectedPools = [...new Set(pendingMatchups.map(m => m.pool?.name).filter(Boolean))];
+      
+      eventMap.set(event.id, {
+        id: event.id,
+        home_team: event.home_team,
+        away_team: event.away_team,
+        start_time: event.start_time,
+        status: event.status,
+        final_home_score: event.final_home_score,
+        final_away_score: event.final_away_score,
+        round_key: event.round_key,
+        round_order: event.round_order,
+        affected_pools: affectedPools as string[],
+        pending_matchup_count: pendingMatchups.length,
+      });
+    }
+
+    setEvents(Array.from(eventMap.values()));
     setLoading(false);
   };
 
   useEffect(() => {
-    fetchMatchups();
+    fetchEvents();
   }, [competitionKey]);
 
-  const openResolveDialog = (matchup: MatchupWithDetails) => {
-    setSelectedMatchup(matchup);
-    setHomeScore(matchup.event?.final_home_score?.toString() || '');
-    setAwayScore(matchup.event?.final_away_score?.toString() || '');
-    setCommissionerNote(matchup.commissioner_note || '');
+  const openResolveDialog = (event: EventWithPools) => {
+    setSelectedEvent(event);
+    setHomeScore(event.final_home_score?.toString() || '');
+    setAwayScore(event.final_away_score?.toString() || '');
+    setCommissionerNote('');
   };
 
   const handleResolve = async () => {
-    if (!selectedMatchup) return;
+    if (!selectedEvent) return;
 
     const home = parseInt(homeScore);
     const away = parseInt(awayScore);
@@ -138,9 +159,9 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
 
     setResolving(true);
     try {
-      const { data, error } = await supabase.functions.invoke('resolve-matchup', {
+      const { data, error } = await supabase.functions.invoke('resolve-event', {
         body: {
-          matchup_id: selectedMatchup.id,
+          event_id: selectedEvent.id,
           home_score: home,
           away_score: away,
           commissioner_note: commissionerNote || undefined,
@@ -150,21 +171,21 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
       if (error) throw error;
 
       if (data.success) {
-        toast.success(`Matchup resolved: ${data.result_type || 'ADVANCES'}`);
-        setSelectedMatchup(null);
-        fetchMatchups();
+        toast.success(`Resolved ${data.resolved_count} matchups for ${data.away_team} @ ${data.home_team}`);
+        setSelectedEvent(null);
+        fetchEvents();
       } else {
-        throw new Error(data.error || 'Failed to resolve matchup');
+        throw new Error(data.error || 'Failed to resolve event');
       }
     } catch (error: any) {
-      console.error('Error resolving matchup:', error);
-      toast.error(error.message || 'Failed to resolve matchup');
+      console.error('Error resolving event:', error);
+      toast.error(error.message || 'Failed to resolve event');
     }
     setResolving(false);
   };
 
-  const unresolvedMatchups = matchups.filter(m => !m.winner_member_id);
-  const resolvedMatchups = matchups.filter(m => m.winner_member_id);
+  const pendingEvents = events.filter(e => e.pending_matchup_count > 0);
+  const resolvedEvents = events.filter(e => e.pending_matchup_count === 0 && e.status === 'final');
 
   if (loading) {
     return (
@@ -191,13 +212,13 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Gavel className="h-5 w-5" />
-              Matchup Resolution
+              Event Resolution
             </CardTitle>
             <CardDescription>
-              Enter final scores to resolve matchups and trigger ownership transfers
+              Enter scores once per game — all pool matchups resolve automatically
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={fetchMatchups}>
+          <Button variant="outline" size="sm" onClick={fetchEvents}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -207,54 +228,48 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
           <div>
             <h3 className="font-medium mb-3 flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-amber-500" />
-              Pending Resolution ({unresolvedMatchups.length})
+              Pending Resolution ({pendingEvents.length} events)
             </h3>
-            {unresolvedMatchups.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No matchups awaiting resolution</p>
+            {pendingEvents.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No events awaiting resolution</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pool</TableHead>
-                    <TableHead>Round</TableHead>
                     <TableHead>Matchup</TableHead>
+                    <TableHead>Round</TableHead>
                     <TableHead>Start Time</TableHead>
+                    <TableHead>Pools Affected</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {unresolvedMatchups.map((matchup) => (
-                    <TableRow key={matchup.id}>
-                      <TableCell className="font-medium">{matchup.pool.name}</TableCell>
-                      <TableCell>{getRoundName(matchup.event?.round_key)}</TableCell>
-                      <TableCell>
-                        {matchup.event ? (
-                          <span>
-                            {matchup.event.away_team} @ {matchup.event.home_team}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">No event linked</span>
-                        )}
+                  {pendingEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">
+                        {event.away_team} @ {event.home_team}
                       </TableCell>
+                      <TableCell>{getRoundName(event.round_key)}</TableCell>
                       <TableCell>
-                        {matchup.event?.start_time ? (
-                          format(new Date(matchup.event.start_time), 'MMM d, h:mm a')
+                        {event.start_time ? (
+                          format(new Date(event.start_time), 'MMM d, h:mm a')
                         ) : (
                           '-'
                         )}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={matchup.event?.status === 'final' ? 'default' : 'secondary'}>
-                          {matchup.event?.status || 'unknown'}
+                        <Badge variant="secondary">
+                          {event.pending_matchup_count} pool{event.pending_matchup_count !== 1 ? 's' : ''}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={event.status === 'final' ? 'default' : 'secondary'}>
+                          {event.status}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button
-                          size="sm"
-                          onClick={() => openResolveDialog(matchup)}
-                          disabled={!matchup.event}
-                        >
+                        <Button size="sm" onClick={() => openResolveDialog(event)}>
                           Resolve
                         </Button>
                       </TableCell>
@@ -266,49 +281,29 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
           </div>
 
           {/* Already Resolved */}
-          {resolvedMatchups.length > 0 && (
+          {resolvedEvents.length > 0 && (
             <div>
               <h3 className="font-medium mb-3 flex items-center gap-2">
                 <CheckCircle className="h-4 w-4 text-brand-green" />
-                Resolved ({resolvedMatchups.length})
+                Resolved ({resolvedEvents.length} events)
               </h3>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pool</TableHead>
-                    <TableHead>Round</TableHead>
                     <TableHead>Matchup</TableHead>
-                    <TableHead>Score</TableHead>
-                    <TableHead>Decided By</TableHead>
-                    <TableHead>Resolved At</TableHead>
+                    <TableHead>Round</TableHead>
+                    <TableHead>Final Score</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {resolvedMatchups.map((matchup) => (
-                    <TableRow key={matchup.id}>
-                      <TableCell className="font-medium">{matchup.pool.name}</TableCell>
-                      <TableCell>{getRoundName(matchup.event?.round_key)}</TableCell>
-                      <TableCell>
-                        {matchup.event ? (
-                          <span>
-                            {matchup.event.away_team} @ {matchup.event.home_team}
-                          </span>
-                        ) : (
-                          '-'
-                        )}
+                  {resolvedEvents.map((event) => (
+                    <TableRow key={event.id}>
+                      <TableCell className="font-medium">
+                        {event.away_team} @ {event.home_team}
                       </TableCell>
+                      <TableCell>{getRoundName(event.round_key)}</TableCell>
                       <TableCell>
-                        {matchup.event?.final_away_score ?? '-'} - {matchup.event?.final_home_score ?? '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{matchup.decided_by || 'manual'}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {matchup.decided_at ? (
-                          format(new Date(matchup.decided_at), 'MMM d, h:mm a')
-                        ) : (
-                          '-'
-                        )}
+                        {event.final_away_score ?? '-'} - {event.final_home_score ?? '-'}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -320,25 +315,41 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
       </Card>
 
       {/* Resolve Dialog */}
-      <Dialog open={!!selectedMatchup} onOpenChange={() => setSelectedMatchup(null)}>
+      <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Resolve Matchup</DialogTitle>
+            <DialogTitle>Resolve Event</DialogTitle>
             <DialogDescription>
-              {selectedMatchup?.event && (
+              {selectedEvent && (
                 <>
-                  {selectedMatchup.event.away_team} @ {selectedMatchup.event.home_team}
+                  <span className="font-medium text-foreground">
+                    {selectedEvent.away_team} @ {selectedEvent.home_team}
+                  </span>
                   <br />
-                  <span className="text-xs">Pool: {selectedMatchup.pool.name} • {getRoundName(selectedMatchup.event.round_key)}</span>
+                  <span className="text-xs">{getRoundName(selectedEvent.round_key)}</span>
                 </>
               )}
             </DialogDescription>
           </DialogHeader>
 
           <div className="grid gap-4 py-4">
+            {/* Affected pools info */}
+            {selectedEvent && selectedEvent.affected_pools.length > 0 && (
+              <div className="bg-muted p-3 rounded-lg text-sm">
+                <span className="font-medium">This will resolve matchups in:</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {selectedEvent.affected_pools.map(pool => (
+                    <Badge key={pool} variant="outline" className="text-xs">
+                      {pool}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="away-score">{selectedMatchup?.event?.away_team} Score</Label>
+                <Label htmlFor="away-score">{selectedEvent?.away_team} Score</Label>
                 <Input
                   id="away-score"
                   type="number"
@@ -348,7 +359,7 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
                 />
               </div>
               <div>
-                <Label htmlFor="home-score">{selectedMatchup?.event?.home_team} Score</Label>
+                <Label htmlFor="home-score">{selectedEvent?.home_team} Score</Label>
                 <Input
                   id="home-score"
                   type="number"
@@ -369,21 +380,15 @@ export function MatchupResolver({ competitionKey }: MatchupResolverProps) {
                 rows={2}
               />
             </div>
-
-            {selectedMatchup?.pool.mode === 'capture' && selectedMatchup?.pool.scoring_rule === 'ats' && (
-              <p className="text-sm text-muted-foreground">
-                This is a <strong>Capture Mode + ATS</strong> pool. The team that covers the spread will win the matchup and capture the opponent's team.
-              </p>
-            )}
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setSelectedMatchup(null)}>
+            <Button variant="outline" onClick={() => setSelectedEvent(null)}>
               Cancel
             </Button>
             <Button onClick={handleResolve} disabled={resolving}>
               {resolving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Resolve Matchup
+              Resolve {selectedEvent?.pending_matchup_count || 0} Matchup{(selectedEvent?.pending_matchup_count || 0) !== 1 ? 's' : ''}
             </Button>
           </DialogFooter>
         </DialogContent>
