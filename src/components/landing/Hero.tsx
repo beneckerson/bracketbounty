@@ -1,5 +1,5 @@
-import { Button } from '@/components/ui/button';
-import { Trophy, Users, Sparkles, ArrowRight } from 'lucide-react';
+import { InteractiveHoverButton } from '@/components/ui/interactive-hover-button';
+import { ArrowRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import bracketBountyLogo from '@/assets/bracketbounty-logo.png';
 
@@ -38,19 +38,18 @@ export function Hero() {
 
         {/* CTA Buttons */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in" style={{ animationDelay: '300ms' }}>
-          <Button asChild size="lg" className="gap-2 px-8 h-14 text-lg bg-primary hover:bg-primary/90 shadow-lg">
-            <Link to="/create-pool">
-              <Trophy className="w-5 h-5" />
-              Create a Pool
-              <ArrowRight className="w-4 h-4" />
-            </Link>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="gap-2 px-8 h-14 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
-            <Link to="/join">
-              <Users className="w-5 h-5" />
-              Join with Code
-            </Link>
-          </Button>
+          <Link to="/create-pool">
+            <InteractiveHoverButton 
+              text="Create a Pool" 
+              className="w-44 h-14 text-lg border-primary"
+            />
+          </Link>
+          <Link to="/join">
+            <InteractiveHoverButton 
+              text="Join with Code" 
+              className="w-44 h-14 text-lg border-primary"
+            />
+          </Link>
         </div>
 
         {/* Demo link */}
