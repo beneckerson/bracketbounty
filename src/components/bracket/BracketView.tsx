@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { cn } from '@/lib/utils';
-import type { Pool, AuditLogEntry } from '@/lib/types';
+import type { Pool, AuditLogEntry, Team } from '@/lib/types';
 import { RoundTabs } from './RoundTabs';
 import { MatchupCard } from './MatchupCard';
 import { OwnedTeamsList } from './OwnedTeamsList';
@@ -16,6 +16,18 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
   const [activeRoundId, setActiveRoundId] = useState(pool.rounds[0]?.id || '');
   
   const activeRound = pool.rounds.find(r => r.id === activeRoundId);
+  
+  // Build teams map from all matchups for the OwnedTeamsList
+  const teamsMap = useMemo(() => {
+    const map: Record<string, Team> = {};
+    pool.rounds?.forEach(round => {
+      round.matchups.forEach(matchup => {
+        map[matchup.teamA.team.code] = matchup.teamA.team;
+        map[matchup.teamB.team.code] = matchup.teamB.team;
+      });
+    });
+    return map;
+  }, [pool.rounds]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -91,7 +103,7 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
           {/* Sidebar */}
           <div className="space-y-6">
             {pool.mode === 'capture' && (
-              <OwnedTeamsList members={pool.members} />
+              <OwnedTeamsList members={pool.members} teamsMap={teamsMap} />
             )}
             
             {/* Pool Info Card */}

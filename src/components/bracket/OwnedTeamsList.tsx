@@ -1,15 +1,15 @@
 import { cn } from '@/lib/utils';
-import type { PoolMember } from '@/lib/types';
-import { getTeamByCode } from '@/lib/demo-data';
+import type { PoolMember, Team } from '@/lib/types';
 import { OwnerAvatar } from '@/components/ui/owner-avatar';
 import { Sparkles } from 'lucide-react';
 
 interface OwnedTeamsListProps {
   members: PoolMember[];
+  teamsMap: Record<string, Team>;
   className?: string;
 }
 
-export function OwnedTeamsList({ members, className }: OwnedTeamsListProps) {
+export function OwnedTeamsList({ members, teamsMap, className }: OwnedTeamsListProps) {
   // Only show members with owned teams
   const activeMembers = members.filter(m => m.ownedTeams.length > 0);
 
@@ -41,8 +41,7 @@ export function OwnedTeamsList({ members, className }: OwnedTeamsListProps) {
             </div>
             <div className="flex flex-wrap gap-1.5">
               {member.ownedTeams.map((ot) => {
-                const team = getTeamByCode(ot.teamCode);
-                if (!team) return null;
+                const team = teamsMap[ot.teamCode];
                 return (
                   <span 
                     key={ot.teamCode}
@@ -51,7 +50,7 @@ export function OwnedTeamsList({ members, className }: OwnedTeamsListProps) {
                       ot.acquiredVia === 'capture' && 'ring-1 ring-capture/50'
                     )}
                   >
-                    {team.abbreviation}
+                    {team?.abbreviation || ot.teamCode}
                     {ot.acquiredVia === 'capture' && (
                       <Sparkles className="w-3 h-3 text-capture" />
                     )}
