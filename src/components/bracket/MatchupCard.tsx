@@ -5,8 +5,23 @@ import { TeamBar } from './TeamBar';
 import { StatusBadge } from './StatusBadge';
 import { OwnerAvatar } from '@/components/ui/owner-avatar';
 import { getParticipantByMemberId } from '@/lib/demo-data';
-import { Trophy, TrendingUp, TrendingDown } from 'lucide-react';
+import { Trophy, TrendingUp, TrendingDown, Clock } from 'lucide-react';
+import { format, isToday, isTomorrow } from 'date-fns';
 
+// Helper to format game time for display
+function formatGameTime(startTime: Date | undefined): string | null {
+  if (!startTime) return null;
+  
+  const date = new Date(startTime);
+  
+  if (isToday(date)) {
+    return `Today, ${format(date, 'h:mm a')}`;
+  } else if (isTomorrow(date)) {
+    return `Tomorrow, ${format(date, 'h:mm a')}`;
+  } else {
+    return format(date, 'EEE, MMM d • h:mm a');
+  }
+}
 interface MatchupCardProps {
   matchup: Matchup;
   pool: Pool;
@@ -205,16 +220,27 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
 
       {/* Status bar */}
       <div className="px-3 py-2 bg-muted/50 flex items-center justify-between">
-        <StatusBadge status={matchup.status} />
-        {chipType === 'upset' && (
-          <span className="upset-badge">Upset</span>
-        )}
-        {chipType === 'captured' && (
-          <span className="capture-badge">Captured</span>
-        )}
-        {chipType === 'advances' && (
-          <span className="advances-badge">Advances</span>
-        )}
+        <div className="flex items-center gap-2">
+          <StatusBadge status={matchup.status} />
+          {/* Show game time for upcoming games */}
+          {matchup.status === 'upcoming' && matchup.startTime && (
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              {formatGameTime(matchup.startTime)}
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1">
+          {chipType === 'upset' && (
+            <span className="upset-badge">Upset</span>
+          )}
+          {chipType === 'captured' && (
+            <span className="capture-badge">Captured</span>
+          )}
+          {chipType === 'advances' && (
+            <span className="advances-badge">Advances</span>
+          )}
+        </div>
       </div>
     </div>
   );
