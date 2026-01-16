@@ -108,6 +108,7 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
         <SeedBadge seed={matchup.teamA.team.seed} />
         {participantA ? (
           <OwnerAvatar
+            participantId={participantA.id}
             displayName={participantA.displayName}
             initials={participantA.initials}
             avatarUrl={participantA.avatarUrl}
@@ -167,6 +168,7 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
         <SeedBadge seed={matchup.teamB.team.seed} />
         {participantB ? (
           <OwnerAvatar
+            participantId={participantB.id}
             displayName={participantB.displayName}
             initials={participantB.initials}
             avatarUrl={participantB.avatarUrl}

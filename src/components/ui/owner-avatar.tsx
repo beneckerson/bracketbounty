@@ -1,6 +1,8 @@
 import { cn } from '@/lib/utils';
+import { getAvatarColor } from '@/lib/avatar-colors';
 
 interface OwnerAvatarProps {
+  participantId: string;
   displayName: string;
   initials: string;
   avatarUrl?: string;
@@ -14,14 +16,17 @@ const sizeClasses = {
   lg: 'w-10 h-10 text-sm',
 };
 
-export function OwnerAvatar({ displayName, initials, avatarUrl, size = 'md', className }: OwnerAvatarProps) {
+export function OwnerAvatar({ participantId, displayName, initials, avatarUrl, size = 'md', className }: OwnerAvatarProps) {
+  const avatarColor = getAvatarColor(participantId);
+  
   return (
     <div
       className={cn(
-        'owner-avatar flex-shrink-0 ring-2 ring-white',
+        'rounded-full flex items-center justify-center font-semibold flex-shrink-0 ring-2 ring-white',
         sizeClasses[size],
         className
       )}
+      style={!avatarUrl ? { backgroundColor: avatarColor.bg, color: avatarColor.text } : undefined}
       title={displayName}
     >
       {avatarUrl ? (
@@ -31,7 +36,10 @@ export function OwnerAvatar({ displayName, initials, avatarUrl, size = 'md', cla
           className="w-full h-full rounded-full object-cover"
           onError={(e) => {
             e.currentTarget.style.display = 'none';
-            e.currentTarget.parentElement!.textContent = initials;
+            const parent = e.currentTarget.parentElement!;
+            parent.style.backgroundColor = avatarColor.bg;
+            parent.style.color = avatarColor.text;
+            parent.textContent = initials;
           }}
         />
       ) : (
