@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, RefreshCw, Shuffle, Play, Trash2, Loader2, X } from 'lucide-react';
+import { UserPlus, Shuffle, Trash2, Loader2, X, Crown, Rocket } from 'lucide-react';
 import {
   Drawer,
   DrawerClose,
@@ -69,7 +69,6 @@ export function ManagePoolDrawer({
 }: ManagePoolDrawerProps) {
   const [guestName, setGuestName] = useState('');
   const [addingGuest, setAddingGuest] = useState(false);
-  const [syncingGames, setSyncingGames] = useState(false);
   const [startingPool, setStartingPool] = useState(false);
   const [deletingPool, setDeletingPool] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
@@ -128,24 +127,6 @@ export function ManagePoolDrawer({
     }
   };
 
-  const handleSyncGames = async () => {
-    setSyncingGames(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('sync-odds', {
-        body: { competition_key: pool.competition_key },
-      });
-
-      if (error) throw error;
-
-      toast.success(`Games synced: ${data?.events_synced || 0} events updated`);
-    } catch (error) {
-      console.error('Error syncing games:', error);
-      toast.error('Failed to sync games');
-    } finally {
-      setSyncingGames(false);
-    }
-  };
-
   const handleStartPool = async () => {
     if (members.length < 2) {
       toast.error('Need at least 2 players to start');
@@ -154,6 +135,17 @@ export function ManagePoolDrawer({
 
     setStartingPool(true);
     try {
+      // Auto-sync games first
+      toast.info('Syncing games...');
+      const { error: syncError } = await supabase.functions.invoke('sync-odds', {
+        body: { competition_key: pool.competition_key },
+      });
+
+      if (syncError) {
+        console.error('Sync error (continuing anyway):', syncError);
+      }
+
+      // Then start the pool
       const { data, error } = await supabase.functions.invoke('start-pool', {
         body: { pool_id: pool.id },
       });
@@ -207,6 +199,7 @@ export function ManagePoolDrawer({
     }
   };
 
+  const commissioner = members.find((m) => m.role === 'creator');
   const nonCreatorMembers = members.filter((m) => m.role !== 'creator');
 
   return (
@@ -259,91 +252,96 @@ export function ManagePoolDrawer({
                 )}
               </div>
 
-              {/* Current Members (removable) */}
-              {nonCreatorMembers.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="text-sm font-medium">Players</h3>
-                  <div className="space-y-2">
-                    {nonCreatorMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                            <span className="text-xs font-medium text-primary">
-                              {member.display_name.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                          <span className="text-sm">{member.display_name}</span>
-                          {!member.is_claimed && (
-                            <span className="text-xs text-muted-foreground">(Guest)</span>
-                          )}
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                          onClick={() => handleRemoveMember(member.id, member.display_name)}
-                          disabled={removingMemberId === member.id}
-                        >
-                          {removingMemberId === member.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
-                          ) : (
-                            <X className="h-3 w-3" />
-                          )}
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Pool Actions */}
+              {/* All Players */}
               <div className="space-y-3">
-                <h3 className="text-sm font-medium">Actions</h3>
+                <h3 className="text-sm font-medium">
+                  Players ({members.length}{pool.max_players ? `/${pool.max_players}` : ''})
+                </h3>
                 <div className="space-y-2">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start"
-                    onClick={handleSyncGames}
-                    disabled={syncingGames}
-                  >
-                    {syncingGames ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                    )}
-                    Sync Games
-                  </Button>
+                  {/* Commissioner first */}
+                  {commissioner && (
+                    <div
+                      className="flex items-center justify-between p-2 bg-primary/10 border border-primary/20 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center">
+                          <Crown className="h-3 w-3 text-primary" />
+                        </div>
+                        <span className="text-sm font-medium">{commissioner.display_name}</span>
+                        <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
+                          Commissioner
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  {/* Other members */}
+                  {nonCreatorMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                          <span className="text-xs font-medium text-primary">
+                            {member.display_name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-sm">{member.display_name}</span>
+                        {!member.is_claimed && (
+                          <span className="text-xs text-muted-foreground">(Guest)</span>
+                        )}
+                      </div>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveMember(member.id, member.display_name)}
+                        disabled={removingMemberId === member.id}
+                      >
+                        {removingMemberId === member.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <X className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
+              {/* Start Pool */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-medium">Start Pool</h3>
+                <div className="space-y-3">
                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
                     <div className="flex items-center gap-2 text-sm text-primary mb-1">
                       <Shuffle className="h-4 w-4" />
                       <span className="font-medium">Random Team Assignment</span>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Teams will be randomly shuffled and distributed evenly among all players when you start the pool.
+                      Teams will be randomly shuffled and distributed evenly among all players.
                     </p>
                   </div>
 
                   <Button
-                    className="w-full justify-start"
+                    className="w-full"
+                    size="lg"
                     onClick={handleStartPool}
                     disabled={startingPool || members.length < 2}
                   >
                     {startingPool ? (
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     ) : (
-                      <Play className="h-4 w-4 mr-2" />
+                      <Rocket className="h-4 w-4 mr-2" />
                     )}
                     Start Pool & Assign Teams
                   </Button>
-                  {members.length < 2 && (
-                    <p className="text-xs text-muted-foreground">
-                      Need at least 2 players to start
-                    </p>
-                  )}
+                  
+                  <p className="text-xs text-muted-foreground text-center">
+                    {members.length < 2 
+                      ? 'Need at least 2 players to start'
+                      : 'Games will be synced automatically and the bracket will be created.'}
+                  </p>
                 </div>
               </div>
 
