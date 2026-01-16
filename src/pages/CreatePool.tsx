@@ -372,43 +372,38 @@ export default function CreatePool() {
                       <p className="text-muted-foreground">Set up your pool size and entry fee</p>
                     </div>
 
-                    {/* Max Players */}
-                    <div className="space-y-4">
-                      <FormField
-                        control={form.control}
-                        name="maxPlayers"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Max Players</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="number"
-                                min={2}
-                                max={selectedCompetition.maxPlayers}
-                                {...field}
-                                onChange={(e) => field.onChange(Number(e.target.value))}
-                              />
-                            </FormControl>
-                            <FormDescription className="text-xs">
-                              {teamCount} teams selected
-                            </FormDescription>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    {/* Number of Players with inline teams badge */}
+                    <FormField
+                      control={form.control}
+                      name="maxPlayers"
+                      render={({ field }) => (
+                        <FormItem>
+                          <div className="flex items-center justify-between">
+                            <FormLabel>Number of Players</FormLabel>
+                            {teamCount > 0 && playerCount > 0 && (
+                              <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
+                                {Math.floor(teamCount / playerCount)} team{Math.floor(teamCount / playerCount) !== 1 ? 's' : ''} each
+                              </span>
+                            )}
+                          </div>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              min={2}
+                              max={selectedCompetition.maxPlayers}
+                              {...field}
+                              onChange={(e) => field.onChange(Number(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormDescription className="text-xs">
+                            {teamCount} teams selected
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                      {/* Computed teams per player display (read-only) */}
-                      <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg border">
-                        <span className="text-sm text-muted-foreground">Teams per player</span>
-                        <span className="font-medium">
-                          {teamCount > 0 && playerCount > 0 
-                            ? `${Math.floor(teamCount / playerCount)} team${Math.floor(teamCount / playerCount) !== 1 ? 's' : ''} each`
-                            : '—'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Allocation Calculator - directly below the inputs */}
+                    {/* Allocation Calculator - shows quick picks and warnings */}
                     {teamCount > 0 && (
                       <AllocationCalculator
                         teamCount={teamCount}
