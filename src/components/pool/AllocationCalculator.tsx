@@ -1,6 +1,5 @@
 import { useMemo, useState } from 'react';
-import { calculateAllocation, getAllocationStatus, getValidDivisors } from '@/lib/allocation-utils';
-import { cn } from '@/lib/utils';
+import { calculateAllocation, getValidDivisors } from '@/lib/allocation-utils';
 import { CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -22,11 +21,6 @@ export function AllocationCalculator({
     [teamCount, playerCount]
   );
 
-  const statusInfo = useMemo(
-    () => getAllocationStatus(teamCount, playerCount),
-    [teamCount, playerCount]
-  );
-
   const validDivisors = useMemo(
     () => getValidDivisors(teamCount),
     [teamCount]
@@ -37,41 +31,12 @@ export function AllocationCalculator({
     setAcknowledged(false);
   }, [playerCount]);
 
-  // Show quick picks (limit to 6 most useful options)
-  const quickPicks = validDivisors.slice(0, 6);
-
   // Determine display state
   const isExcluding = !allocation.isValid && allocation.excludedCount > 0;
   const showAcknowledged = isExcluding && acknowledged;
 
   return (
     <div className="space-y-4">
-      {/* Quick-pick buttons */}
-      {quickPicks.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs text-muted-foreground">Quick picks:</span>
-          {quickPicks.map((count) => {
-            const isActive = count === playerCount;
-            const teamsEach = teamCount / count;
-            return (
-              <Button
-                key={count}
-                type="button"
-                variant={isActive ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => onPlayerCountChange?.(count)}
-                className={cn(
-                  'h-7 px-3 text-xs font-medium',
-                  isActive && 'pointer-events-none'
-                )}
-              >
-                {count} ({teamsEach} each)
-              </Button>
-            );
-          })}
-        </div>
-      )}
-
       {/* Status message - Valid */}
       {allocation.isValid && (
         <div className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400">
