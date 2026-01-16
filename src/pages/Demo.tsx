@@ -1,5 +1,5 @@
 import { BracketView } from '@/components/bracket/BracketView';
-import { demoCapturePool } from '@/lib/demo-data';
+import { demoCapturePool, demoAuditLog } from '@/lib/demo-data';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -17,7 +17,7 @@ const Demo = () => {
         </Link>
       </div>
 
-      <BracketView pool={demoCapturePool} />
+      <BracketView pool={demoCapturePool} auditLogs={demoAuditLog} />
     </div>
   );
 };
