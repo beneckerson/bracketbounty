@@ -9,6 +9,7 @@ const corsHeaders = {
 
 // Map our competition keys to The Odds API sport keys
 const SPORT_KEY_MAP: Record<string, string> = {
+  'cfp': 'americanfootball_ncaaf',
   'nfl_playoffs': 'americanfootball_nfl',
   'nba_playoffs': 'basketball_nba',
   'nhl_playoffs': 'icehockey_nhl',
@@ -79,6 +80,21 @@ const TEAM_CODE_MAP: Record<string, { code: string; abbreviation: string; color:
   'Milwaukee Brewers': { code: 'MIL_MLB', abbreviation: 'Brewers', color: 'team-blue' },
   'Miami Marlins': { code: 'MIA_MLB', abbreviation: 'Marlins', color: 'team-blue' },
   'Toronto Blue Jays': { code: 'TOR_MLB', abbreviation: 'Blue Jays', color: 'team-blue' },
+  // College Football Teams (common CFP contenders)
+  'Notre Dame Fighting Irish': { code: 'ND', abbreviation: 'Notre Dame', color: 'team-blue' },
+  'Ohio State Buckeyes': { code: 'OSU', abbreviation: 'Ohio State', color: 'team-red' },
+  'Penn State Nittany Lions': { code: 'PSU', abbreviation: 'Penn State', color: 'team-blue' },
+  'Georgia Bulldogs': { code: 'UGA', abbreviation: 'Georgia', color: 'team-red' },
+  'Texas Longhorns': { code: 'TEX_CFB', abbreviation: 'Texas', color: 'team-orange' },
+  'Oregon Ducks': { code: 'ORE', abbreviation: 'Oregon', color: 'team-green' },
+  'Tennessee Volunteers': { code: 'TENN', abbreviation: 'Tennessee', color: 'team-orange' },
+  'Clemson Tigers': { code: 'CLEM', abbreviation: 'Clemson', color: 'team-purple' },
+  'Michigan Wolverines': { code: 'MICH', abbreviation: 'Michigan', color: 'team-blue' },
+  'Alabama Crimson Tide': { code: 'BAMA', abbreviation: 'Alabama', color: 'team-red' },
+  'Arizona State Sun Devils': { code: 'ASU', abbreviation: 'Arizona State', color: 'team-red' },
+  'Indiana Hoosiers': { code: 'IND', abbreviation: 'Indiana', color: 'team-red' },
+  'Boise State Broncos': { code: 'BSU', abbreviation: 'Boise State', color: 'team-blue' },
+  'SMU Mustangs': { code: 'SMU', abbreviation: 'SMU', color: 'team-blue' },
 };
 
 function getTeamInfo(teamName: string): { code: string; abbreviation: string; color: string } {
@@ -152,12 +168,49 @@ function detectSeriesPlayoffRound(competitionKey: string, totalGames: number): {
   return { round_key: 'regular', round_order: 1 };
 }
 
+// Detect CFP playoff round based on game date
+function detectCFPPlayoffRound(startTime: Date, totalGames: number): { round_key: string; round_order: number } {
+  const month = startTime.getMonth(); // 0-indexed
+  const day = startTime.getDate();
+  
+  console.log(`CFP round detection for date: ${month + 1}/${day}, total games: ${totalGames}`);
+  
+  // CFP typically runs late December through early January
+  // First Round: Dec 20-21 (4 games)
+  // Quarterfinals: Dec 31 - Jan 1 (4 games)
+  // Semifinals: Jan 9-10 (2 games)
+  // Championship: Jan 20 (1 game)
+  
+  if (month === 11) { // December
+    if (day <= 22) {
+      return { round_key: 'first_round', round_order: 1 };
+    }
+    return { round_key: 'quarterfinals', round_order: 2 };
+  }
+  
+  if (month === 0) { // January
+    if (day <= 12) {
+      return { round_key: 'semifinals', round_order: 3 };
+    }
+    return { round_key: 'championship', round_order: 4 };
+  }
+  
+  // Fallback based on game count
+  if (totalGames === 1) return { round_key: 'championship', round_order: 4 };
+  if (totalGames === 2) return { round_key: 'semifinals', round_order: 3 };
+  if (totalGames <= 4) return { round_key: 'quarterfinals', round_order: 2 };
+  return { round_key: 'first_round', round_order: 1 };
+}
+
 // Main round detection function
 function detectPlayoffRound(
   competitionKey: string, 
   startTime: Date, 
   totalGames: number
 ): { round_key: string; round_order: number } {
+  if (competitionKey === 'cfp') {
+    return detectCFPPlayoffRound(startTime, totalGames);
+  }
   if (competitionKey === 'nfl_playoffs') {
     return detectNFLPlayoffRound(startTime, totalGames);
   }
@@ -244,7 +297,7 @@ serve(async (req) => {
         away_team: awayTeamInfo.code,
         start_time: event.commence_time,
         status: new Date(event.commence_time) > new Date() ? 'scheduled' : 'live',
-        event_type: competition_key === 'nfl_playoffs' ? 'game' : 'series',
+        event_type: (competition_key === 'nfl_playoffs' || competition_key === 'cfp') ? 'game' : 'series',
       };
 
       const { data: upsertedEvent, error: eventError } = await supabase
