@@ -35,6 +35,14 @@ const NFL_ROUNDS = [
   { key: 'super_bowl', name: 'Super Bowl', order: 4 },
 ];
 
+// Round options for College Football Playoff
+const CFP_ROUNDS = [
+  { key: 'first_round', name: 'First Round', order: 1 },
+  { key: 'quarterfinals', name: 'Quarterfinals', order: 2 },
+  { key: 'semifinals', name: 'Semifinals', order: 3 },
+  { key: 'championship', name: 'Championship', order: 4 },
+];
+
 // Round options for NBA/NHL playoffs
 const SERIES_ROUNDS = [
   { key: 'first_round', name: 'First Round', order: 1 },
@@ -53,8 +61,9 @@ const MLB_ROUNDS = [
 
 function getRoundsForCompetition(competitionKey: string) {
   switch (competitionKey) {
-    case 'nfl_playoffs':
     case 'cfp':
+      return CFP_ROUNDS;
+    case 'nfl_playoffs':
       return NFL_ROUNDS;
     case 'mlb_playoffs':
       return MLB_ROUNDS;
