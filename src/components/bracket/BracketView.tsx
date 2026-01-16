@@ -1,11 +1,14 @@
 import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import type { Pool, AuditLogEntry, Team } from '@/lib/types';
 import { RoundTabs } from './RoundTabs';
 import { MatchupCard } from './MatchupCard';
 import { OwnedTeamsList } from './OwnedTeamsList';
 import { AuditDrawer } from './AuditDrawer';
-import { Trophy, Users, Sparkles } from 'lucide-react';
+import { Trophy, Users, Sparkles, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface BracketViewProps {
   pool: Pool;
@@ -13,6 +16,7 @@ interface BracketViewProps {
 }
 
 export function BracketView({ pool, auditLogs }: BracketViewProps) {
+  const { user } = useAuth();
   const [activeRoundId, setActiveRoundId] = useState(pool.rounds[0]?.id || '');
   
   const activeRound = pool.rounds.find(r => r.id === activeRoundId);
@@ -32,32 +36,41 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <header className="bg-card border-b border-border px-4 py-4">
+      <header className="bg-card border-b border-border px-4 py-3">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="font-display text-3xl md:text-4xl text-foreground tracking-wide">
-                {pool.name}
-              </h1>
-              <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" />
-                  {pool.members.length} players
-                </span>
-                <span>•</span>
-                <span>${(pool.buyinAmountCents / 100).toFixed(0)} buy-in</span>
-                {pool.mode === 'capture' && (
-                  <>
-                    <span>•</span>
-                    <span className="flex items-center gap-1 text-capture font-medium">
-                      <Sparkles className="w-4 h-4" />
-                      Capture Mode
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
+          {/* Top row: Back + History */}
+          <div className="flex items-center justify-between mb-2">
+            <Button variant="ghost" size="sm" asChild className="gap-1 -ml-2 text-muted-foreground hover:text-foreground">
+              <Link to={user ? "/my-pools" : "/"}>
+                <ArrowLeft className="h-4 w-4" />
+                <span className="hidden sm:inline">Back</span>
+              </Link>
+            </Button>
             <AuditDrawer logs={auditLogs} />
+          </div>
+          
+          {/* Pool title - full width, no overlap */}
+          <h1 className="font-display text-2xl sm:text-3xl md:text-4xl text-foreground tracking-wide leading-tight">
+            {pool.name}
+          </h1>
+          
+          {/* Meta info row */}
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-sm text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Users className="w-4 h-4" />
+              {pool.members.length} players
+            </span>
+            <span className="hidden sm:inline">•</span>
+            <span>${(pool.buyinAmountCents / 100).toFixed(0)} buy-in</span>
+            {pool.mode === 'capture' && (
+              <>
+                <span className="hidden sm:inline">•</span>
+                <span className="flex items-center gap-1 text-capture font-medium">
+                  <Sparkles className="w-4 h-4" />
+                  <span className="hidden xs:inline">Capture</span> Mode
+                </span>
+              </>
+            )}
           </div>
         </div>
       </header>
