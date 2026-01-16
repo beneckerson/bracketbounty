@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { RosterEditor } from '@/components/admin/RosterEditor';
 import { EventsManager } from '@/components/admin/EventsManager';
-import { MatchupResolver } from '@/components/admin/MatchupResolver';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2, Users, Calendar, Gavel } from 'lucide-react';
+import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2, Users, Calendar } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 import { toast } from 'sonner';
 
@@ -394,10 +393,6 @@ export default function Rosters() {
                   <Calendar className="h-4 w-4" />
                   Events
                 </TabsTrigger>
-                <TabsTrigger value="matchups" className="flex items-center gap-2">
-                  <Gavel className="h-4 w-4" />
-                  Matchups
-                </TabsTrigger>
               </TabsList>
               <TabsContent value="teams">
                 <RosterEditor
@@ -407,11 +402,6 @@ export default function Rosters() {
               </TabsContent>
               <TabsContent value="events">
                 <EventsManager
-                  competitionKey={selectedCompetition}
-                />
-              </TabsContent>
-              <TabsContent value="matchups">
-                <MatchupResolver
                   competitionKey={selectedCompetition}
                 />
               </TabsContent>
