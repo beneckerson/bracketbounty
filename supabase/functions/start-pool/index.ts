@@ -277,10 +277,14 @@ Deno.serve(async (req) => {
           const matchingRound = createdRounds.find(r => r.round_order === event.round_order);
           if (matchingRound) {
             roundId = matchingRound.id;
+            console.log(`[ROUND FALLBACK] Event ${event.id} (${event.round_key}) mapped to round ${matchingRound.round_key} via round_order=${event.round_order}`);
           } else {
             // Default to first round
             roundId = createdRounds[0].id;
+            console.warn(`[ROUND MISMATCH] Event ${event.id} (${event.round_key}, order=${event.round_order}) - no matching round found, defaulting to first round`);
           }
+        } else {
+          console.log(`[ROUND MATCH] Event ${event.id} (${event.round_key}) -> pool_round ${roundId}`);
         }
 
         matchupInserts.push({
