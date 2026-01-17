@@ -8,6 +8,7 @@ import { OwnedTeamsList } from './OwnedTeamsList';
 import { AuditDrawer } from './AuditDrawer';
 import { PushRuleInfo } from './PushRuleInfo';
 import { CaptureRulesDrawer } from './CaptureRulesDrawer';
+import { OddsAttribution } from './OddsAttribution';
 import { Trophy, Users, Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,9 +16,10 @@ import { useAuth } from '@/contexts/AuthContext';
 interface BracketViewProps {
   pool: Pool;
   auditLogs: AuditLogEntry[];
+  oddsLastUpdated?: Date | string | null;
 }
 
-export function BracketView({ pool, auditLogs }: BracketViewProps) {
+export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewProps) {
   const { user } = useAuth();
   
   // Compute the most relevant round to show by default
@@ -206,6 +208,11 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
                 </div>
               </div>
             </div>
+            
+            {/* Odds Attribution - show for ATS scoring */}
+            {pool.scoringRule === 'ats' && (
+              <OddsAttribution lastUpdated={oddsLastUpdated} />
+            )}
           </div>
         </div>
       </main>

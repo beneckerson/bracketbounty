@@ -29,9 +29,9 @@ export function PushRuleInfo({ className }: PushRuleInfoProps) {
       {isExpanded && (
         <div className="px-3 pb-3 pt-0 text-sm text-muted-foreground">
           <p>
-            When the spread is a whole number (no .5) and the final margin matches the spread exactly, 
-            it's a <span className="font-semibold text-foreground">push</span>. In this case, the{' '}
-            <span className="font-semibold text-foreground">game winner advances</span>—no capture occurs.
+            A push occurs when the spread is a whole number and the final margin lands exactly on it. 
+            In this case, the <span className="font-semibold text-foreground">game winner advances</span>—no 
+            ownership changes hands.
           </p>
         </div>
       )}
