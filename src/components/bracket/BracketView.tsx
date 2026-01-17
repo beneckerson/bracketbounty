@@ -7,6 +7,7 @@ import { MatchupCard } from './MatchupCard';
 import { OwnedTeamsList } from './OwnedTeamsList';
 import { AuditDrawer } from './AuditDrawer';
 import { PushRuleInfo } from './PushRuleInfo';
+import { CaptureRulesDrawer } from './CaptureRulesDrawer';
 import { Trophy, Users, Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -100,7 +101,10 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
                 <span className="hidden sm:inline">Back</span>
               </Link>
             </Button>
-            <AuditDrawer logs={auditLogs} />
+            <div className="flex items-center gap-1">
+              {pool.mode === 'capture' && <CaptureRulesDrawer />}
+              <AuditDrawer logs={auditLogs} />
+            </div>
           </div>
           
           {/* Pool title - full width, no overlap */}

@@ -81,6 +81,7 @@ export default {
         },
         winner: "hsl(var(--winner-highlight))",
         capture: "hsl(var(--capture-badge))",
+        upset: "hsl(var(--upset-badge))",
         live: "hsl(var(--live-indicator))",
         "brand-green": "hsl(var(--brand-green))",
       },
