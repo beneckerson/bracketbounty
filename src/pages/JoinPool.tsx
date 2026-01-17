@@ -111,12 +111,16 @@ export default function JoinPool() {
         if (error) throw error;
 
         // Log member joined event
-        await supabase.from('audit_log').insert({
+        const { error: auditError } = await supabase.from('audit_log').insert({
           pool_id: pool.id,
           actor_user_id: user.id,
           action_type: 'member_joined',
           payload: { display_name: values.displayName },
         });
+
+        if (auditError) {
+          console.error('Failed to log member_joined event:', auditError);
+        }
 
         toast({ title: 'Joined!', description: `You've joined ${pool.name}` });
         navigate(`/pool/${pool.id}`);
