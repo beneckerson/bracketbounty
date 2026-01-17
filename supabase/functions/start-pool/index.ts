@@ -208,6 +208,20 @@ Deno.serve(async (req) => {
 
     console.log(`Created ${ownershipRecords.length} ownership records`);
 
+    // 4.5. Log teams_assigned event
+    await supabase.from('audit_log').insert({
+      pool_id: pool_id,
+      actor_user_id: user.id,
+      action_type: 'teams_assigned',
+      payload: {
+        count: members.length,
+        assignments: assignments.map(a => ({
+          member_name: a.member_name,
+          team_abbreviation: a.team_abbreviation,
+        })),
+      },
+    });
+
     // 5. Create pool rounds based on competition
     const roundConfigs = ROUND_CONFIGS[pool.competition_key] || ROUND_CONFIGS.nfl_playoffs;
     const roundInserts = roundConfigs.map(rc => ({

@@ -87,16 +87,24 @@ export function ManagePoolDrawer({
 
     setAddingGuest(true);
     try {
+      const guestDisplayName = guestName.trim();
       const { error } = await supabase.from('pool_members').insert({
         pool_id: pool.id,
-        display_name: guestName.trim(),
+        display_name: guestDisplayName,
         is_claimed: false,
         role: 'member',
       });
 
       if (error) throw error;
 
-      toast.success(`${guestName} added to pool`);
+      // Log member joined event
+      await supabase.from('audit_log').insert({
+        pool_id: pool.id,
+        action_type: 'member_joined',
+        payload: { display_name: guestDisplayName },
+      });
+
+      toast.success(`${guestDisplayName} added to pool`);
       setGuestName('');
       onMembersChange();
     } catch (error: any) {

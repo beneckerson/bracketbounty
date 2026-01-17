@@ -1,7 +1,7 @@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { History, Sparkles } from 'lucide-react';
+import { History, Clock } from 'lucide-react';
 import type { AuditLogEntry } from '@/lib/types';
 import { format } from 'date-fns';
 
@@ -21,8 +21,8 @@ export function AuditDrawer({ logs }: AuditDrawerProps) {
       <SheetContent side="right" className="w-full sm:max-w-md">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 font-display text-2xl">
-            <Sparkles className="w-5 h-5 text-capture" />
-            Capture History
+            <Clock className="w-5 h-5 text-primary" />
+            Pool History
           </SheetTitle>
         </SheetHeader>
         <ScrollArea className="h-[calc(100vh-100px)] mt-4 pr-4">
