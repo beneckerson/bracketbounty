@@ -17,3 +17,6 @@ verify_jwt = false
 
 [functions.start-pool]
 verify_jwt = false
+
+[functions.sync-all-odds]
+verify_jwt = false
