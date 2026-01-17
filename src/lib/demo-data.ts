@@ -126,8 +126,8 @@ export const demoCapturePool: Pool = {
       matchups: [
         {
           // QF-1: (10) MIAMI +9.5 vs (2) OHIO STATE -9.5
-          // Result: MIAMI 24 - OSU 14 (Miami wins by 10, covers +9.5 as underdog)
-          // Outcome: Kool (MIAMI) covers as underdog → CAPTURED chip shown, Kool retains MIAMI
+          // Result: MIAMI 24 - OSU 14 (Miami wins by 10 - UPSET, underdog wins outright)
+          // Outcome: Kool (MIAMI) wins as underdog → UPSET chip, no capture, Sean eliminated
           id: 'match-qf-1',
           roundId: 'round-qf',
           eventId: 'evt-1',
@@ -136,13 +136,13 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm8',
           winnerTeamCode: 'MIAMI',
-          capturedTeams: ['OSU'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
         {
           // QF-2: (5) OREGON -2.5 vs (4) TEXAS TECH +2.5
           // Result: ORE 23 - TTU 0 (Oregon wins by 23, covers -2.5 as favorite)
-          // Outcome: Skilone (ORE) covers as favorite → No CAPTURED chip, Skilone retains ORE
+          // Outcome: Skilone (ORE) covers as favorite → ADVANCES chip, no capture, Johnson eliminated
           id: 'match-qf-2',
           roundId: 'round-qf',
           eventId: 'evt-2',
@@ -151,13 +151,13 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm5',
           winnerTeamCode: 'ORE',
-          capturedTeams: ['TTU'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
         {
           // QF-3: (1) INDIANA -7.0 vs (9) ALABAMA +7.0
           // Result: IND 38 - BAMA 3 (Indiana wins by 35, covers -7.0 as favorite)
-          // Outcome: Ben (IND) covers as favorite → No CAPTURED chip, Ben retains IND
+          // Outcome: Ben (IND) covers as favorite → ADVANCES chip, no capture, B Hart eliminated
           id: 'match-qf-3',
           roundId: 'round-qf',
           eventId: 'evt-3',
@@ -166,13 +166,13 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm1',
           winnerTeamCode: 'IND',
-          capturedTeams: ['BAMA'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
         {
           // QF-4: (6) OLE MISS +6.5 vs (3) GEORGIA -6.5
-          // Result: MISS 39 - UGA 34 (Ole Miss wins by 5, covers +6.5 as underdog)
-          // Outcome: JMB (MISS) covers as underdog → CAPTURED chip shown, JMB retains MISS
+          // Result: MISS 39 - UGA 34 (Ole Miss wins by 5 - UPSET, underdog wins outright)
+          // Outcome: JMB (MISS) wins as underdog → UPSET chip, no capture, Rich eliminated
           id: 'match-qf-4',
           roundId: 'round-qf',
           eventId: 'evt-4',
@@ -181,7 +181,7 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm6',
           winnerTeamCode: 'MISS',
-          capturedTeams: ['UGA'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
       ],
@@ -195,8 +195,7 @@ export const demoCapturePool: Pool = {
         {
           // SF-1: (10) MIAMI -3.5 vs (6) OLE MISS +3.5
           // Result: MIAMI 31 - MISS 27 (Miami wins by 4, covers -3.5 as favorite)
-          // But Miami is the lower seed playing as favorite → CAPTURED chip shown
-          // Outcome: Kool (MIAMI) covers, retains MIAMI
+          // Outcome: Kool (MIAMI) covers as favorite → ADVANCES chip, no capture, JMB eliminated
           id: 'match-sf-1',
           roundId: 'round-sf',
           eventId: 'evt-5',
@@ -205,13 +204,13 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm8',
           winnerTeamCode: 'MIAMI',
-          capturedTeams: ['MISS'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
         {
           // SF-2: (1) INDIANA -3.5 vs (5) OREGON +3.5
           // Result: IND 56 - ORE 22 (Indiana wins by 34, covers -3.5 as favorite)
-          // Outcome: Ben (IND) covers as favorite → No CAPTURED chip, Ben retains IND
+          // Outcome: Ben (IND) covers as favorite → ADVANCES chip, no capture, Skilone eliminated
           id: 'match-sf-2',
           roundId: 'round-sf',
           eventId: 'evt-6',
@@ -220,7 +219,7 @@ export const demoCapturePool: Pool = {
           status: 'final',
           winnerId: 'm1',
           winnerTeamCode: 'IND',
-          capturedTeams: ['ORE'],
+          capturedTeams: [],
           decidedBy: 'ats',
         },
       ],
@@ -247,14 +246,15 @@ export const demoCapturePool: Pool = {
   ],
 };
 
-// Audit log for capture events (ATS-based)
+// Audit log for matchup results (ATS-based)
+// Note: No true captures in this demo - all outcomes are UPSET (underdog wins) or ADVANCES (favorite covers)
 export const demoAuditLog: AuditLogEntry[] = [
   {
     id: 'log-1',
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'upset',
-    description: 'Miami (+9.5) upset Ohio State outright. Kool takes Ohio State from Sean.',
+    description: 'Miami (+9.5) wins outright and advances! Kool moves on. Ohio State and Sean are eliminated.',
     createdAt: new Date('2025-12-31T20:00:00'),
   },
   {
@@ -262,7 +262,7 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'advances',
-    description: 'Oregon (-2.5) covered and advances. Skilone takes Texas Tech from Johnson.',
+    description: 'Oregon (-2.5) covered and advances. Skilone moves on. Texas Tech and Johnson are eliminated.',
     createdAt: new Date('2025-12-31T23:30:00'),
   },
   {
@@ -270,7 +270,7 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'advances',
-    description: 'Indiana (-7.0) covered and advances. Ben takes Alabama from B Hart.',
+    description: 'Indiana (-7.0) covered and advances. Ben moves on. Alabama and B Hart are eliminated.',
     createdAt: new Date('2026-01-01T17:00:00'),
   },
   {
@@ -278,7 +278,7 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'upset',
-    description: 'Ole Miss (+6.5) upset Georgia outright. JMB takes Georgia from Rich.',
+    description: 'Ole Miss (+6.5) wins outright and advances! JMB moves on. Georgia and Rich are eliminated.',
     createdAt: new Date('2026-01-01T20:30:00'),
   },
   {
@@ -286,7 +286,7 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'advances',
-    description: 'Miami (-3.5) covered and advances. Kool takes Ole Miss from JMB.',
+    description: 'Miami (-3.5) covered and advances. Kool moves on. Ole Miss and JMB are eliminated.',
     createdAt: new Date('2026-01-09T20:00:00'),
   },
   {
@@ -294,7 +294,7 @@ export const demoAuditLog: AuditLogEntry[] = [
     poolId: 'pool-1',
     actorName: 'System',
     actionType: 'advances',
-    description: 'Indiana (-3.5) covered and advances. Ben takes Oregon from Skilone.',
+    description: 'Indiana (-3.5) covered and advances. Ben moves on. Oregon and Skilone are eliminated.',
     createdAt: new Date('2026-01-09T23:30:00'),
   },
 ];
