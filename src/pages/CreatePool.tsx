@@ -13,7 +13,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Header } from '@/components/layout/Header';
 import { CompetitionSelector } from '@/components/pool/CompetitionSelector';
-import { TeamSelector } from '@/components/pool/TeamSelector';
 import { AllocationCalculator } from '@/components/pool/AllocationCalculator';
 import { MatchupPreview, groupMatchupsByRound, type MatchupPreviewData } from '@/components/pool/MatchupPreview';
 import { getCompetition, CompetitionConfig } from '@/lib/competitions';
@@ -39,9 +38,8 @@ type PoolFormValues = z.infer<typeof poolSchema>;
 const STEPS = [
   { id: 1, name: 'Competition', description: 'Choose your playoff' },
   { id: 2, name: 'Settings', description: 'Pool rules' },
-  { id: 3, name: 'Teams', description: 'Select teams' },
-  { id: 4, name: 'Players', description: 'Buy-in & size' },
-  { id: 5, name: 'Review', description: 'Confirm details' },
+  { id: 3, name: 'Players', description: 'Buy-in & size' },
+  { id: 4, name: 'Review', description: 'Confirm details' },
 ];
 
 export default function CreatePool() {
@@ -77,13 +75,28 @@ export default function CreatePool() {
     },
   });
 
-  const handleCompetitionSelect = (comp: CompetitionConfig) => {
+  const handleCompetitionSelect = async (comp: CompetitionConfig) => {
     setSelectedCompetition(comp);
     form.setValue('competitionKey', comp.key);
-    form.setValue('selectedTeams', []); // Reset teams when competition changes
     form.setValue('maxPlayers', Math.min(8, comp.maxPlayers));
     if (!comp.captureEnabled) {
       form.setValue('mode', 'standard');
+    }
+    
+    // Auto-fetch all teams from the roster for this competition
+    try {
+      const { data: rosterData } = await supabase
+        .from('competition_rosters')
+        .select('team_code')
+        .eq('competition_key', comp.key)
+        .eq('season', comp.season);
+      
+      if (rosterData && rosterData.length > 0) {
+        const allTeamCodes = rosterData.map(r => r.team_code);
+        form.setValue('selectedTeams', allTeamCodes);
+      }
+    } catch (error) {
+      console.error('Error fetching roster teams:', error);
     }
   };
 
@@ -99,14 +112,7 @@ export default function CreatePool() {
         return;
       }
     }
-    if (currentStep === 3) {
-      const teams = form.getValues('selectedTeams');
-      if (teams.length < 2) {
-        toast({ title: 'Please select at least 2 teams', variant: 'destructive' });
-        return;
-      }
-    }
-    setCurrentStep((s) => Math.min(s + 1, 5));
+    setCurrentStep((s) => Math.min(s + 1, 4));
   };
 
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
@@ -151,17 +157,26 @@ export default function CreatePool() {
         .single();
 
       // Add creator as first member
+      const creatorDisplayName = profile?.display_name || user.email?.split('@')[0] || 'Creator';
       const { error: memberError } = await supabase
         .from('pool_members')
         .insert({
           pool_id: pool.id,
           user_id: user.id,
-          display_name: profile?.display_name || user.email?.split('@')[0] || 'Creator',
+          display_name: creatorDisplayName,
           role: 'creator',
           is_claimed: true,
         });
 
       if (memberError) throw memberError;
+
+      // Log member_joined event for the creator
+      await supabase.from('audit_log').insert({
+        pool_id: pool.id,
+        actor_user_id: user.id,
+        action_type: 'member_joined',
+        payload: { display_name: creatorDisplayName },
+      });
 
       setCreatedPool({ id: pool.id, inviteCode: pool.invite_code });
       setShowSuccess(true);
@@ -211,10 +226,10 @@ export default function CreatePool() {
     }
   }, [teamCount, playerCount, form]);
 
-  // Fetch matchups and teams when entering step 5
+  // Fetch matchups and teams when entering step 4 (Review)
   useEffect(() => {
     const fetchMatchupsForPreview = async () => {
-      if (currentStep !== 5 || !selectedCompetition || values.selectedTeams.length === 0) return;
+      if (currentStep !== 4 || !selectedCompetition || values.selectedTeams.length === 0) return;
       
       setLoadingMatchups(true);
       try {
@@ -441,27 +456,8 @@ export default function CreatePool() {
                   </div>
                 )}
 
-                {/* Step 3: Select Teams */}
+                {/* Step 3: Players & Buy-in */}
                 {currentStep === 3 && selectedCompetition && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="text-2xl font-display text-foreground mb-2">Select Teams</h2>
-                      <p className="text-muted-foreground">
-                        Choose which teams will be part of your pool's drawing
-                      </p>
-                    </div>
-
-                    <TeamSelector
-                      competitionKey={values.competitionKey}
-                      season={selectedCompetition.season}
-                      selectedTeams={values.selectedTeams}
-                      onChange={(teams) => form.setValue('selectedTeams', teams)}
-                    />
-                  </div>
-                )}
-
-                {/* Step 4: Players & Buy-in */}
-                {currentStep === 4 && selectedCompetition && (
                   <div className="space-y-6">
                     <div>
                       <h2 className="text-2xl font-display text-foreground mb-2">Players & Buy-in</h2>
@@ -554,8 +550,8 @@ export default function CreatePool() {
                   </div>
                 )}
 
-                {/* Step 5: Review */}
-                {currentStep === 5 && selectedCompetition && (
+                {/* Step 4: Review */}
+                {currentStep === 4 && selectedCompetition && (
                   <div className="space-y-6">
                     {/* Pool Header - mirrors Pool.tsx */}
                     <div className="flex items-center gap-4 mb-2">
@@ -671,7 +667,7 @@ export default function CreatePool() {
                     </Button>
                   )}
 
-                  {currentStep < 5 ? (
+                  {currentStep < 4 ? (
                     <Button type="button" onClick={nextStep}>
                       Continue
                       <ArrowRight className="h-4 w-4 ml-2" />
