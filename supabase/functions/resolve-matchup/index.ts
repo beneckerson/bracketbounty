@@ -149,8 +149,18 @@ serve(async (req) => {
           }
         }
       } else {
-        // Push - rare with half-point spreads, but handle it
-        console.log('Push detected - no winner');
+        // Push - game winner advances (ties go to the favorite effectively)
+        decidedBy = 'ats';
+        console.log('Push detected - game winner advances');
+        
+        if (finalHomeScore > finalAwayScore) {
+          winnerMemberId = homeOwner?.member_id || null;
+          resultType = 'ADVANCES';
+        } else if (finalAwayScore > finalHomeScore) {
+          winnerMemberId = awayOwner?.member_id || null;
+          resultType = 'ADVANCES';
+        }
+        // True tie (same final score AND push on spread) - extremely rare, no winner
       }
     } else {
       // Standard mode or straight scoring - winner is team with higher score
