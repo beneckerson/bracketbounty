@@ -1,17 +1,18 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Users, Copy, Check, Settings, Loader2, UserPlus, ExternalLink, Rocket } from 'lucide-react';
+import { ArrowLeft, Users, Copy, Check, Settings, Loader2, UserPlus, ExternalLink, Rocket, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
 import { ManagePoolDrawer } from '@/components/pool/ManagePoolDrawer';
 import { BracketView } from '@/components/bracket/BracketView';
+import { MatchupPreview, MatchupPreviewData, groupMatchupsByRound } from '@/components/pool/MatchupPreview';
+import { TeamAssignmentDialog } from '@/components/pool/TeamAssignmentDialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
 import { transformAuditLogs } from '@/lib/audit-utils';
 import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, AuditLogEntry } from '@/lib/types';
-
 interface PoolData {
   id: string;
   name: string;
@@ -28,6 +29,7 @@ interface PoolData {
   payout_note: string | null;
   created_by: string | null;
   created_at: string;
+  selected_teams: string[] | null;
 }
 
 interface PoolMember {
@@ -126,6 +128,20 @@ export default function Pool() {
   const [bracketPool, setBracketPool] = useState<PoolType | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [loadingBracket, setLoadingBracket] = useState(false);
+  
+  // Lobby matchup previews
+  const [lobbyMatchups, setLobbyMatchups] = useState<MatchupPreviewData[]>([]);
+  const [loadingLobbyMatchups, setLoadingLobbyMatchups] = useState(false);
+  
+  // First-visit assignment reveal
+  const [showAssignmentReveal, setShowAssignmentReveal] = useState(false);
+  const [assignmentData, setAssignmentData] = useState<Array<{
+    member_id: string;
+    member_name: string;
+    team_code: string;
+    team_name: string;
+    team_abbreviation: string;
+  }>>([]);
 
   const isCreator = pool?.created_by === user?.id;
   
@@ -160,6 +176,12 @@ export default function Pool() {
           // Fetch bracket data if pool is active or completed
           if (poolData.status === 'active' || poolData.status === 'completed') {
             fetchBracketData(poolData, membersData || []);
+            checkFirstVisitReveal(poolData, membersData || []);
+          }
+          
+          // Fetch lobby matchups for lobby status
+          if (poolData.status === 'lobby') {
+            fetchLobbyMatchups(poolData);
           }
           return;
         }
@@ -204,6 +226,12 @@ export default function Pool() {
           const pd = poolData[0] as PoolData;
           if (pd.status === 'active' || pd.status === 'completed') {
             fetchBracketData(pd, (membersData || []) as PoolMember[]);
+            checkFirstVisitReveal(pd, (membersData || []) as PoolMember[]);
+          }
+          
+          // Fetch lobby matchups for lobby status
+          if (pd.status === 'lobby') {
+            fetchLobbyMatchups(pd);
           }
         }
       }
@@ -445,6 +473,141 @@ export default function Pool() {
     }
   };
 
+  // Fetch matchup previews for lobby view
+  const fetchLobbyMatchups = async (poolData: PoolData) => {
+    if (!poolId || poolData.status !== 'lobby') return;
+    setLoadingLobbyMatchups(true);
+
+    try {
+      const selectedTeams: string[] = poolData.selected_teams || [];
+      if (selectedTeams.length === 0) {
+        setLoadingLobbyMatchups(false);
+        return;
+      }
+
+      // Fetch events for this competition with selected teams
+      const { data: events } = await supabase
+        .from('events')
+        .select('id, home_team, away_team, start_time, round_key')
+        .eq('competition_key', poolData.competition_key)
+        .in('home_team', selectedTeams)
+        .in('away_team', selectedTeams)
+        .order('start_time', { ascending: true });
+
+      if (!events || events.length === 0) {
+        setLoadingLobbyMatchups(false);
+        return;
+      }
+
+      // Fetch teams data
+      const teamCodes = new Set<string>();
+      events.forEach(e => {
+        teamCodes.add(e.home_team);
+        teamCodes.add(e.away_team);
+      });
+
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('code, name, abbreviation, color')
+        .in('code', Array.from(teamCodes));
+
+      // Fetch roster data for seeds
+      const { data: rosterData } = await supabase
+        .from('competition_rosters')
+        .select('team_code, seed')
+        .eq('competition_key', poolData.competition_key)
+        .eq('season', poolData.season)
+        .in('team_code', Array.from(teamCodes));
+
+      // Build team map
+      const teamMap: Record<string, Team> = {};
+      (teamsData || []).forEach(t => {
+        const roster = (rosterData || []).find(r => r.team_code === t.code);
+        teamMap[t.code] = {
+          code: t.code,
+          name: t.name,
+          abbreviation: t.abbreviation,
+          seed: roster?.seed || 0,
+          color: t.color || '#888888',
+        };
+      });
+
+      // Build matchup previews
+      const previews: MatchupPreviewData[] = events.map(e => ({
+        id: e.id,
+        awayTeam: teamMap[e.away_team] || { code: e.away_team, name: e.away_team, abbreviation: e.away_team.substring(0, 3).toUpperCase(), seed: 0, color: '#888888' },
+        homeTeam: teamMap[e.home_team] || { code: e.home_team, name: e.home_team, abbreviation: e.home_team.substring(0, 3).toUpperCase(), seed: 0, color: '#888888' },
+        startTime: e.start_time ? new Date(e.start_time) : null,
+        roundKey: e.round_key,
+      }));
+
+      setLobbyMatchups(previews);
+    } catch (error) {
+      console.error('Error fetching lobby matchups:', error);
+    } finally {
+      setLoadingLobbyMatchups(false);
+    }
+  };
+
+  // Check and prepare first-visit assignment reveal
+  const checkFirstVisitReveal = async (poolData: PoolData, membersData: PoolMember[]) => {
+    if (!poolId || poolData.status !== 'active') return;
+    
+    const seenKey = `assignments_seen_${poolId}`;
+    const hasSeen = localStorage.getItem(seenKey);
+    
+    if (hasSeen) return;
+
+    try {
+      // Fetch ownership data
+      const { data: ownership } = await supabase
+        .from('ownership')
+        .select('team_code, member_id')
+        .eq('pool_id', poolId);
+
+      if (!ownership || ownership.length === 0) return;
+
+      // Fetch teams data
+      const teamCodes = ownership.map(o => o.team_code);
+      const { data: teamsData } = await supabase
+        .from('teams')
+        .select('code, name, abbreviation')
+        .in('code', teamCodes);
+
+      const teamMap: Record<string, { name: string; abbreviation: string }> = {};
+      (teamsData || []).forEach(t => {
+        teamMap[t.code] = { name: t.name, abbreviation: t.abbreviation };
+      });
+
+      // Build member name map
+      const memberMap: Record<string, string> = {};
+      membersData.forEach(m => {
+        memberMap[m.id] = m.display_name;
+      });
+
+      // Build assignments
+      const assignments = ownership.map(o => ({
+        member_id: o.member_id,
+        member_name: memberMap[o.member_id] || 'Unknown',
+        team_code: o.team_code,
+        team_name: teamMap[o.team_code]?.name || o.team_code,
+        team_abbreviation: teamMap[o.team_code]?.abbreviation || o.team_code.substring(0, 3).toUpperCase(),
+      }));
+
+      setAssignmentData(assignments);
+      setShowAssignmentReveal(true);
+    } catch (error) {
+      console.error('Error preparing assignment reveal:', error);
+    }
+  };
+
+  const handleAssignmentRevealClose = () => {
+    if (poolId) {
+      localStorage.setItem(`assignments_seen_${poolId}`, 'true');
+    }
+    setShowAssignmentReveal(false);
+  };
+
   useEffect(() => {
     fetchPoolData();
   }, [poolId, user]);
@@ -509,6 +672,17 @@ export default function Pool() {
         <main className="pt-20">
           <BracketView pool={bracketPool} auditLogs={auditLogs} />
         </main>
+        
+        {/* First-visit assignment reveal dialog */}
+        <TeamAssignmentDialog
+          open={showAssignmentReveal}
+          onOpenChange={(open) => {
+            if (!open) handleAssignmentRevealClose();
+          }}
+          assignments={assignmentData}
+          onViewBracket={handleAssignmentRevealClose}
+          showShuffleAnimation={true}
+        />
       </div>
     );
   }
@@ -645,6 +819,38 @@ export default function Pool() {
               </div>
             )}
           </div>
+
+          {/* Matchups Preview Section (for lobby) */}
+          {pool.status === 'lobby' && (
+            <div className="bg-card border border-border rounded-2xl p-6 mb-6">
+              <div className="flex items-center gap-2 mb-4">
+                <Calendar className="h-5 w-5 text-primary" />
+                <h2 className="font-display text-lg text-foreground">
+                  Upcoming Matchups
+                </h2>
+                {loadingLobbyMatchups && (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-2" />
+                )}
+              </div>
+              
+              {lobbyMatchups.length > 0 ? (
+                <div className="space-y-2">
+                  {lobbyMatchups.slice(0, 6).map((matchup) => (
+                    <MatchupPreview key={matchup.id} matchup={matchup} />
+                  ))}
+                  {lobbyMatchups.length > 6 && (
+                    <p className="text-xs text-muted-foreground text-center pt-2">
+                      +{lobbyMatchups.length - 6} more matchups
+                    </p>
+                  )}
+                </div>
+              ) : !loadingLobbyMatchups ? (
+                <p className="text-sm text-muted-foreground">
+                  Matchups will appear once games are scheduled for this competition.
+                </p>
+              ) : null}
+            </div>
+          )}
 
           {/* Members Section */}
           <div className="bg-card border border-border rounded-2xl p-6">
