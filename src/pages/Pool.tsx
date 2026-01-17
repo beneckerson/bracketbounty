@@ -9,8 +9,6 @@ import { BracketView } from '@/components/bracket/BracketView';
 import { MatchupPreview, MatchupPreviewData, groupMatchupsByRound } from '@/components/pool/MatchupPreview';
 import { TeamAssignmentDialog } from '@/components/pool/TeamAssignmentDialog';
 import { useAuth } from '@/contexts/AuthContext';
-
-// Helper to extract auth loading state
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
 import { transformAuditLogs } from '@/lib/audit-utils';
@@ -118,7 +116,7 @@ const statusLabels: Record<string, string> = {
 export default function Pool() {
   const { poolId } = useParams<{ poolId: string }>();
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user } = useAuth();
   const [pool, setPool] = useState<PoolData | null>(null);
   const [members, setMembers] = useState<PoolMember[]>([]);
   const [loading, setLoading] = useState(true);
@@ -180,7 +178,7 @@ export default function Pool() {
           
           // Fetch bracket data if pool is active or completed
           if (poolData.status === 'active' || poolData.status === 'completed') {
-            fetchBracketData(poolData, membersData || [], false);
+            fetchBracketData(poolData, membersData || []);
             checkFirstVisitReveal(poolData, membersData || []);
           }
           
@@ -230,7 +228,7 @@ export default function Pool() {
           // Fetch bracket data for active/completed pools
           const pd = poolData[0] as PoolData;
           if (pd.status === 'active' || pd.status === 'completed') {
-            fetchBracketData(pd, (membersData || []) as PoolMember[], true);
+            fetchBracketData(pd, (membersData || []) as PoolMember[]);
             checkFirstVisitReveal(pd, (membersData || []) as PoolMember[]);
           }
           
@@ -247,7 +245,7 @@ export default function Pool() {
     }
   };
 
-  const fetchBracketData = async (poolData: PoolData, membersData: PoolMember[], isGuestUser: boolean) => {
+  const fetchBracketData = async (poolData: PoolData, membersData: PoolMember[]) => {
     if (!poolId) return;
     setLoadingBracket(true);
 
@@ -258,7 +256,7 @@ export default function Pool() {
       let rawAuditLogs: any[] = [];
 
       // If guest, use the SECURITY DEFINER function to bypass RLS
-      if (isGuestUser && claimToken) {
+      if (isGuest && claimToken) {
         const { data: bracketData, error: bracketError } = await supabase
           .rpc('get_bracket_data_public', { 
             p_pool_id: poolId, 
@@ -682,8 +680,7 @@ export default function Pool() {
   const isFull = pool ? (pool.max_players && members.length >= pool.max_players) : false;
   const displayStatus = pool?.status === 'lobby' && isFull ? 'lobby_full' : pool?.status;
 
-  // Show loading while auth or pool data is being fetched
-  if (loading || authLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -713,18 +710,6 @@ export default function Pool() {
   const buyinDisplay = pool.buyin_amount_cents && pool.buyin_amount_cents > 0
     ? `$${(pool.buyin_amount_cents / 100).toFixed(0)}`
     : 'Free';
-
-  // Show loading while bracket data is being fetched for active/completed pools
-  if ((pool.status === 'active' || pool.status === 'completed') && !bracketPool) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <div className="flex items-center justify-center pt-32">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>
-    );
-  }
 
   // Show bracket view for active/completed pools
   if ((pool.status === 'active' || pool.status === 'completed') && bracketPool) {

@@ -1,14 +1,14 @@
-import { Button } from "@/components/ui/button";
-import { Trophy, Users, Sparkles, ArrowRight } from "lucide-react";
-import { Link } from "react-router-dom";
-import bracketBountyLogo from "@/assets/bracketbounty-logo.png";
+import { Button } from '@/components/ui/button';
+import { Trophy, Users, Sparkles, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import bracketBountyLogo from '@/assets/bracketbounty-logo.png';
 
 export function Hero() {
   return (
     <section className="relative min-h-[80vh] flex items-center justify-center overflow-hidden pt-16">
       {/* Background gradient - navy to white */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background" />
-
+      
       {/* Decorative elements with brand colors */}
       <div className="absolute top-20 left-10 w-72 h-72 bg-accent/15 rounded-full blur-3xl" />
       <div className="absolute bottom-20 right-10 w-96 h-96 bg-brand-green/10 rounded-full blur-3xl" />
@@ -17,35 +17,27 @@ export function Hero() {
       <div className="relative z-10 max-w-5xl mx-auto px-4 text-center">
         {/* Logo - prominently displayed */}
         <div className="mb-8 animate-fade-in">
-          <img
-            src={bracketBountyLogo}
-            alt="BracketBounty"
+          <img 
+            src={bracketBountyLogo} 
+            alt="BracketBounty" 
             className="h-36 md:h-52 lg:h-64 w-auto mx-auto drop-shadow-2xl hover:scale-[1.02] transition-transform duration-300"
-            style={{ filter: "drop-shadow(0 0 30px hsl(var(--accent) / 0.3))" }}
+            style={{ filter: 'drop-shadow(0 0 30px hsl(var(--accent) / 0.3))' }}
           />
         </div>
 
         {/* Tagline */}
-        <h1
-          className="text-5xl md:text-6xl lg:text-7xl font-fugaz text-primary tracking-wide mb-4 animate-fade-in"
-          style={{ animationDelay: "100ms" }}
-        >
+        <h1 className="text-5xl md:text-6xl lg:text-7xl font-fugaz text-primary tracking-wide mb-4 animate-fade-in" style={{ animationDelay: '100ms' }}>
           PLAYOFF POOLS FOR FRIENDS
         </h1>
 
         {/* Subheading */}
-        <p
-          className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in"
-          style={{ animationDelay: "200ms" }}
-        >
-          Create private playoff pools with friends. Track brackets, capture teams, and crown champions.
+        <p className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in" style={{ animationDelay: '200ms' }}>
+          Create private playoff pools with friends. Track brackets, capture teams, and crown champions. 
+          No gambling, just glory.
         </p>
 
         {/* CTA Buttons */}
-        <div
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in"
-          style={{ animationDelay: "300ms" }}
-        >
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-12 animate-fade-in" style={{ animationDelay: '300ms' }}>
           <Button asChild size="lg" className="gap-2 px-8 h-14 text-lg bg-primary hover:bg-primary/90 shadow-lg">
             <Link to="/create-pool">
               <Trophy className="w-5 h-5" />
@@ -53,12 +45,7 @@ export function Hero() {
               <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
-          <Button
-            asChild
-            size="lg"
-            variant="outline"
-            className="gap-2 px-8 h-14 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground"
-          >
+          <Button asChild size="lg" variant="outline" className="gap-2 px-8 h-14 text-lg border-2 border-primary text-primary hover:bg-primary hover:text-primary-foreground">
             <Link to="/join">
               <Users className="w-5 h-5" />
               Join with Code
@@ -67,14 +54,15 @@ export function Hero() {
         </div>
 
         {/* Demo link */}
-        <Link
-          to="/demo"
+        <Link 
+          to="/demo" 
           className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition-colors animate-fade-in"
-          style={{ animationDelay: "400ms" }}
+          style={{ animationDelay: '400ms' }}
         >
           View demo bracket
           <ArrowRight className="w-4 h-4" />
         </Link>
+
       </div>
     </section>
   );

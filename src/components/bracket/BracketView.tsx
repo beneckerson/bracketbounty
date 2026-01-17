@@ -127,7 +127,7 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
                 <span className="hidden sm:inline">•</span>
                 <span className="flex items-center gap-1 text-capture font-medium">
                   <Sparkles className="w-4 h-4" />
-                  Capture Mode
+                  <span className="hidden xs:inline">Capture</span> Mode
                 </span>
               </>
             )}
