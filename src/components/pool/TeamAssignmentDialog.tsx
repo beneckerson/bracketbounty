@@ -1,9 +1,10 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { OwnerAvatar } from '@/components/ui/owner-avatar';
 import { Sparkles, Trophy, Users, Shuffle } from 'lucide-react';
+import confetti from 'canvas-confetti';
 
 interface TeamAssignment {
   member_id: string;
@@ -57,6 +58,35 @@ export function TeamAssignmentDialog({
   const memberEntries = Object.entries(assignmentsByMember);
   const totalTeams = assignments.length;
 
+  // Fire confetti celebration
+  const fireConfetti = useCallback(() => {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    const colors = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6'];
+
+    (function frame() {
+      confetti({
+        particleCount: 3,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 },
+        colors: colors,
+      });
+      confetti({
+        particleCount: 3,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 },
+        colors: colors,
+      });
+
+      if (Date.now() < end) {
+        requestAnimationFrame(frame);
+      }
+    })();
+  }, []);
+
   // Create a shuffled display for the animation
   useEffect(() => {
     if (!showShuffleAnimation || !open) return;
@@ -96,6 +126,7 @@ export function TeamAssignmentDialog({
             clearInterval(revealInterval);
             setTimeout(() => {
               setAnimationPhase('complete');
+              fireConfetti();
             }, 300);
           }
         }, 150);
@@ -105,7 +136,7 @@ export function TeamAssignmentDialog({
     return () => {
       clearInterval(shuffleInterval);
     };
-  }, [open, showShuffleAnimation, assignments, totalTeams]);
+  }, [open, showShuffleAnimation, assignments, totalTeams, fireConfetti]);
 
   // Reset animation state when dialog closes
   useEffect(() => {
