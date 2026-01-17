@@ -180,7 +180,7 @@ export default function Pool() {
           
           // Fetch bracket data if pool is active or completed
           if (poolData.status === 'active' || poolData.status === 'completed') {
-            fetchBracketData(poolData, membersData || []);
+            fetchBracketData(poolData, membersData || [], false);
             checkFirstVisitReveal(poolData, membersData || []);
           }
           
@@ -230,7 +230,7 @@ export default function Pool() {
           // Fetch bracket data for active/completed pools
           const pd = poolData[0] as PoolData;
           if (pd.status === 'active' || pd.status === 'completed') {
-            fetchBracketData(pd, (membersData || []) as PoolMember[]);
+            fetchBracketData(pd, (membersData || []) as PoolMember[], true);
             checkFirstVisitReveal(pd, (membersData || []) as PoolMember[]);
           }
           
@@ -247,7 +247,7 @@ export default function Pool() {
     }
   };
 
-  const fetchBracketData = async (poolData: PoolData, membersData: PoolMember[]) => {
+  const fetchBracketData = async (poolData: PoolData, membersData: PoolMember[], isGuestUser: boolean) => {
     if (!poolId) return;
     setLoadingBracket(true);
 
@@ -258,7 +258,7 @@ export default function Pool() {
       let rawAuditLogs: any[] = [];
 
       // If guest, use the SECURITY DEFINER function to bypass RLS
-      if (isGuest && claimToken) {
+      if (isGuestUser && claimToken) {
         const { data: bracketData, error: bracketError } = await supabase
           .rpc('get_bracket_data_public', { 
             p_pool_id: poolId, 
