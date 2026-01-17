@@ -40,8 +40,7 @@ export function Hero() {
           className="text-base md:text-lg text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-in"
           style={{ animationDelay: "200ms" }}
         >
-          Create private playoff pools with friends. Track brackets, capture teams, and crown champions. No gambling,
-          just glory.
+          Create private playoff pools with friends. Track brackets, capture teams, and crown champions.
         </p>
 
         {/* CTA Buttons */}
