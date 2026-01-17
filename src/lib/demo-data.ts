@@ -231,15 +231,17 @@ export const demoCapturePool: Pool = {
       order: 3,
       matchups: [
         {
-          // Final: (1) INDIANA -7.5 vs (10) MIAMI +7.5
+          // Final: (1) INDIANA vs (10) MIAMI - from The Odds API
+          // Game ID: b9d4c49ff5254d29e970cbb40bb6b2ea
+          // Indiana (Home) vs Miami (Away) - 2026-01-20T00:30:00Z
           // Status: Upcoming
           id: 'match-final',
           roundId: 'round-final',
-          eventId: 'evt-7',
+          eventId: 'b9d4c49ff5254d29e970cbb40bb6b2ea',
           teamA: { team: getTeam('IND'), ownerId: 'm1', spread: -7.5 },
           teamB: { team: getTeam('MIAMI'), ownerId: 'm8', spread: 7.5 },
           status: 'upcoming',
-          startTime: new Date('2026-01-20T20:00:00'),
+          startTime: new Date('2026-01-20T00:30:00Z'),
         },
       ],
     },
