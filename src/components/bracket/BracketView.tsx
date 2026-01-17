@@ -18,7 +18,45 @@ interface BracketViewProps {
 
 export function BracketView({ pool, auditLogs }: BracketViewProps) {
   const { user } = useAuth();
-  const [activeRoundId, setActiveRoundId] = useState(pool.rounds[0]?.id || '');
+  
+  // Compute the most relevant round to show by default
+  const defaultRoundId = useMemo(() => {
+    const now = new Date();
+    
+    // 1. Find rounds with upcoming matchups (startTime in the future)
+    const roundsWithUpcoming = pool.rounds.map(round => {
+      const upcomingMatchups = round.matchups.filter(m => 
+        m.startTime && new Date(m.startTime) > now && m.status === 'upcoming'
+      );
+      const soonestMatchup = upcomingMatchups.reduce((min, m) => {
+        if (!m.startTime) return min;
+        return !min || new Date(m.startTime) < new Date(min.startTime) ? m : min;
+      }, null as typeof round.matchups[0] | null);
+      
+      return { round, soonestMatchup };
+    }).filter(r => r.soonestMatchup !== null);
+    
+    // 2. If there are rounds with upcoming matchups, pick the one with the soonest game
+    if (roundsWithUpcoming.length > 0) {
+      roundsWithUpcoming.sort((a, b) => 
+        new Date(a.soonestMatchup!.startTime!).getTime() - 
+        new Date(b.soonestMatchup!.startTime!).getTime()
+      );
+      return roundsWithUpcoming[0].round.id;
+    }
+    
+    // 3. If no upcoming matchups, find the latest round with matchups (most recent action)
+    const roundsWithMatchups = pool.rounds.filter(r => r.matchups.length > 0);
+    if (roundsWithMatchups.length > 0) {
+      // Return the latest round (highest order) that has matchups
+      return roundsWithMatchups[roundsWithMatchups.length - 1].id;
+    }
+    
+    // 4. Fallback to first round
+    return pool.rounds[0]?.id || '';
+  }, [pool.rounds]);
+  
+  const [activeRoundId, setActiveRoundId] = useState(defaultRoundId);
   
   const activeRound = pool.rounds.find(r => r.id === activeRoundId);
   
