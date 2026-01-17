@@ -247,25 +247,71 @@ export default function Pool() {
     setLoadingBracket(true);
 
     try {
-      // Fetch rounds
-      const { data: rounds } = await supabase
-        .from('pool_rounds')
-        .select('*')
-        .eq('pool_id', poolId)
-        .order('round_order', { ascending: true });
+      let rounds: PoolRound[] = [];
+      let matchups: PoolMatchup[] = [];
+      let ownership: OwnershipData[] = [];
+      let rawAuditLogs: any[] = [];
 
-      // Fetch matchups
-      const { data: matchups } = await supabase
-        .from('pool_matchups')
-        .select('*')
-        .eq('pool_id', poolId);
+      // If guest, use the SECURITY DEFINER function to bypass RLS
+      if (isGuest && claimToken) {
+        const { data: bracketData, error: bracketError } = await supabase
+          .rpc('get_bracket_data_public', { 
+            p_pool_id: poolId, 
+            p_claim_token: claimToken 
+          });
+
+        if (bracketError) {
+          console.error('Error fetching bracket data as guest:', bracketError);
+          throw bracketError;
+        }
+        
+        // Parse the JSON response
+        const parsedData = bracketData as unknown as {
+          rounds: PoolRound[];
+          matchups: PoolMatchup[];
+          ownership: OwnershipData[];
+          audit_log: any[];
+        } | null;
+        
+        rounds = parsedData?.rounds || [];
+        matchups = parsedData?.matchups || [];
+        ownership = parsedData?.ownership || [];
+        rawAuditLogs = parsedData?.audit_log || [];
+      } else {
+        // Authenticated user - use direct queries
+        const [roundsRes, matchupsRes, ownershipRes, auditRes] = await Promise.all([
+          supabase
+            .from('pool_rounds')
+            .select('*')
+            .eq('pool_id', poolId)
+            .order('round_order', { ascending: true }),
+          supabase
+            .from('pool_matchups')
+            .select('*')
+            .eq('pool_id', poolId),
+          supabase
+            .from('ownership')
+            .select('team_code, member_id, acquired_via, from_matchup_id, acquired_at')
+            .eq('pool_id', poolId),
+          supabase
+            .from('audit_log')
+            .select('*')
+            .eq('pool_id', poolId)
+            .order('created_at', { ascending: false })
+        ]);
+
+        rounds = (roundsRes.data || []) as PoolRound[];
+        matchups = (matchupsRes.data || []) as PoolMatchup[];
+        ownership = (ownershipRes.data || []) as OwnershipData[];
+        rawAuditLogs = auditRes.data || [];
+      }
 
       // Get event IDs from matchups
-      const eventIds = (matchups || [])
+      const eventIds = matchups
         .map(m => m.event_id)
         .filter((id): id is string => id !== null);
 
-      // Fetch events
+      // Fetch events (now publicly accessible)
       let events: EventData[] = [];
       if (eventIds.length > 0) {
         const { data: eventsData } = await supabase
@@ -275,7 +321,7 @@ export default function Pool() {
         events = (eventsData || []) as EventData[];
       }
 
-      // Fetch lines for spreads
+      // Fetch lines for spreads (now publicly accessible)
       let lines: LineData[] = [];
       if (eventIds.length > 0) {
         const { data: linesData } = await supabase
@@ -292,7 +338,7 @@ export default function Pool() {
         teamCodes.add(e.away_team);
       });
 
-      // Fetch teams
+      // Fetch teams (now publicly accessible)
       let teams: TeamData[] = [];
       if (teamCodes.size > 0) {
         const { data: teamsData } = await supabase
@@ -301,12 +347,6 @@ export default function Pool() {
           .in('code', Array.from(teamCodes));
         teams = (teamsData || []) as TeamData[];
       }
-
-      // Fetch ownership
-      const { data: ownership } = await supabase
-        .from('ownership')
-        .select('team_code, member_id, acquired_via, from_matchup_id, acquired_at')
-        .eq('pool_id', poolId);
 
       // Build lookup maps
       const teamMap: Record<string, TeamData> = {};
@@ -320,17 +360,17 @@ export default function Pool() {
 
       const ownershipByTeam: Record<string, OwnershipData> = {};
       const ownershipByMember: Record<string, OwnershipData[]> = {};
-      (ownership || []).forEach(o => {
-        ownershipByTeam[o.team_code] = o as OwnershipData;
+      ownership.forEach(o => {
+        ownershipByTeam[o.team_code] = o;
         if (!ownershipByMember[o.member_id]) {
           ownershipByMember[o.member_id] = [];
         }
-        ownershipByMember[o.member_id].push(o as OwnershipData);
+        ownershipByMember[o.member_id].push(o);
       });
 
       // Build Pool type structure
-      const transformedRounds: Round[] = (rounds || []).map(r => {
-        const roundMatchups = (matchups || []).filter(m => m.round_id === r.id);
+      const transformedRounds: Round[] = rounds.map(r => {
+        const roundMatchups = matchups.filter(m => m.round_id === r.id);
         
         const transformedMatchups: Matchup[] = roundMatchups.map(m => {
           const event = m.event_id ? eventMap[m.event_id] : null;
@@ -349,7 +389,7 @@ export default function Pool() {
             code: homeTeamCode,
             name: homeTeamData?.name || homeTeamCode,
             abbreviation: homeTeamData?.abbreviation || homeTeamCode.substring(0, 3).toUpperCase(),
-            seed: 0, // Could be enhanced with seed data
+            seed: 0,
             color: homeTeamData?.color || '#888888',
           };
 
@@ -386,7 +426,7 @@ export default function Pool() {
             },
             status,
             winnerId: m.winner_member_id || undefined,
-            winnerTeamCode: undefined, // Could be derived from event
+            winnerTeamCode: undefined,
             decidedBy: m.decided_by || undefined,
             commissionerNote: m.commissioner_note || undefined,
             startTime: event?.start_time ? new Date(event.start_time) : undefined,
@@ -446,13 +486,6 @@ export default function Pool() {
       };
 
       setBracketPool(fullPool);
-
-      // Fetch audit logs
-      const { data: rawAuditLogs } = await supabase
-        .from('audit_log')
-        .select('*')
-        .eq('pool_id', poolId)
-        .order('created_at', { ascending: false });
 
       // Build member name map for readable descriptions
       const memberNameMap: Record<string, string> = {};

@@ -673,6 +673,10 @@ export type Database = {
           pool_name: string
         }[]
       }
+      get_bracket_data_public: {
+        Args: { p_claim_token?: string; p_pool_id: string }
+        Returns: Json
+      }
       get_pool_by_id_public: {
         Args: { p_claim_token?: string; p_pool_id: string }
         Returns: {
