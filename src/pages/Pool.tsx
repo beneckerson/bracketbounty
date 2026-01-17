@@ -89,6 +89,7 @@ interface OwnershipData {
 
 interface LineData {
   event_id: string;
+  locked_at: string | null;
   locked_line_payload: {
     home_spread?: number;
     away_spread?: number;
@@ -127,6 +128,7 @@ export default function Pool() {
   // Bracket data
   const [bracketPool, setBracketPool] = useState<PoolType | null>(null);
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
+  const [oddsLastUpdated, setOddsLastUpdated] = useState<string | null>(null);
   const [loadingBracket, setLoadingBracket] = useState(false);
   
   // Lobby matchup previews
@@ -326,7 +328,7 @@ export default function Pool() {
       if (eventIds.length > 0) {
         const { data: linesData } = await supabase
           .from('lines')
-          .select('event_id, locked_line_payload')
+          .select('event_id, locked_at, locked_line_payload')
           .in('event_id', eventIds);
         lines = (linesData || []) as LineData[];
       }
@@ -356,7 +358,14 @@ export default function Pool() {
       events.forEach(e => { eventMap[e.id] = e; });
 
       const lineMap: Record<string, LineData> = {};
-      lines.forEach(l => { lineMap[l.event_id] = l; });
+      let mostRecentLockedAt: string | null = null;
+      lines.forEach(l => { 
+        lineMap[l.event_id] = l;
+        // Track the most recent locked_at timestamp
+        if (l.locked_at && (!mostRecentLockedAt || l.locked_at > mostRecentLockedAt)) {
+          mostRecentLockedAt = l.locked_at;
+        }
+      });
 
       const ownershipByTeam: Record<string, OwnershipData> = {};
       const ownershipByMember: Record<string, OwnershipData[]> = {};
@@ -499,6 +508,9 @@ export default function Pool() {
       // Transform raw logs to AuditLogEntry format
       const transformedLogs = transformAuditLogs(rawAuditLogs || [], memberNameMap);
       setAuditLogs(transformedLogs);
+      
+      // Set odds last updated from most recent line lock
+      setOddsLastUpdated(mostRecentLockedAt);
     } catch (error) {
       console.error('Error fetching bracket data:', error);
     } finally {
@@ -703,7 +715,7 @@ export default function Pool() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="pt-20">
-          <BracketView pool={bracketPool} auditLogs={auditLogs} />
+          <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
         </main>
         
         {/* First-visit assignment reveal dialog */}
