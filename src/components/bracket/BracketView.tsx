@@ -6,6 +6,7 @@ import { RoundTabs } from './RoundTabs';
 import { MatchupCard } from './MatchupCard';
 import { OwnedTeamsList } from './OwnedTeamsList';
 import { AuditDrawer } from './AuditDrawer';
+import { PushRuleInfo } from './PushRuleInfo';
 import { Trophy, Users, Sparkles, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,21 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
     });
     return map;
   }, [pool.rounds]);
+  
+  // Check if there are any whole-point spreads (potential pushes)
+  const hasWholePointSpreads = useMemo(() => {
+    if (pool.mode !== 'capture' || pool.scoringRule !== 'ats') return false;
+    
+    return pool.rounds.some(round =>
+      round.matchups.some(matchup => {
+        const spreadA = matchup.teamA.spread;
+        const spreadB = matchup.teamB.spread;
+        // Check if spread is a whole number (no .5)
+        return (spreadA !== undefined && spreadA % 1 === 0) || 
+               (spreadB !== undefined && spreadB % 1 === 0);
+      })
+    );
+  }, [pool.rounds, pool.mode, pool.scoringRule]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -115,6 +131,11 @@ export function BracketView({ pool, auditLogs }: BracketViewProps) {
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Push Rule Info - show for capture mode when whole-point spreads exist */}
+            {hasWholePointSpreads && (
+              <PushRuleInfo />
+            )}
+            
             {pool.mode === 'capture' && (
               <OwnedTeamsList members={pool.members} teamsMap={teamsMap} />
             )}

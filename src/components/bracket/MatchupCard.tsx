@@ -132,6 +132,10 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
                 : 'bg-muted text-muted-foreground'
             )}>
               {formatSpread(matchup.teamA.spread)}
+              {/* Asterisk for whole-point spreads (push possible) */}
+              {matchup.teamA.spread % 1 === 0 && (
+                <span className="text-muted-foreground/60">*</span>
+              )}
             </span>
           )}
         </div>
@@ -192,6 +196,10 @@ export function MatchupCard({ matchup, pool, showCapture = true, className, onCl
                 : 'bg-muted text-muted-foreground'
             )}>
               {formatSpread(matchup.teamB.spread)}
+              {/* Asterisk for whole-point spreads (push possible) */}
+              {matchup.teamB.spread % 1 === 0 && (
+                <span className="text-muted-foreground/60">*</span>
+              )}
             </span>
           )}
         </div>
