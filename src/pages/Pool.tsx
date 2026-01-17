@@ -93,6 +93,7 @@ interface LineData {
   locked_line_payload: {
     home_spread?: number;
     away_spread?: number;
+    fetched_at?: string;
   } | null;
 }
 
@@ -358,12 +359,13 @@ export default function Pool() {
       events.forEach(e => { eventMap[e.id] = e; });
 
       const lineMap: Record<string, LineData> = {};
-      let mostRecentLockedAt: string | null = null;
+      let mostRecentOddsUpdate: string | null = null;
       lines.forEach(l => { 
         lineMap[l.event_id] = l;
-        // Track the most recent locked_at timestamp
-        if (l.locked_at && (!mostRecentLockedAt || l.locked_at > mostRecentLockedAt)) {
-          mostRecentLockedAt = l.locked_at;
+        // Track the most recent timestamp: prefer locked_at, fallback to fetched_at
+        const lineTimestamp = l.locked_at || l.locked_line_payload?.fetched_at || null;
+        if (lineTimestamp && (!mostRecentOddsUpdate || lineTimestamp > mostRecentOddsUpdate)) {
+          mostRecentOddsUpdate = lineTimestamp;
         }
       });
 
@@ -509,8 +511,8 @@ export default function Pool() {
       const transformedLogs = transformAuditLogs(rawAuditLogs || [], memberNameMap);
       setAuditLogs(transformedLogs);
       
-      // Set odds last updated from most recent line lock
-      setOddsLastUpdated(mostRecentLockedAt);
+      // Set odds last updated from most recent line timestamp
+      setOddsLastUpdated(mostRecentOddsUpdate);
     } catch (error) {
       console.error('Error fetching bracket data:', error);
     } finally {
