@@ -1,7 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { Trophy, Users, Sparkles, ArrowRight } from "lucide-react";
+import { Trophy, Users, ArrowRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import bracketBountyLogo from "@/assets/bracketbounty-logo.png";
+import heroPoolPage from "@/assets/hero-pool-page.png";
+import heroPoolHistory from "@/assets/hero-pool-history.png";
 
 export function Hero() {
   return (
@@ -76,6 +78,33 @@ export function Hero() {
           View demo bracket
           <ArrowRight className="w-4 h-4" />
         </Link>
+
+        {/* Product Showcase */}
+        <div 
+          className="relative mt-16 max-w-4xl mx-auto animate-fade-in pointer-events-none select-none"
+          style={{ animationDelay: "500ms" }}
+          aria-hidden="true"
+        >
+          {/* Main Pool Page Screenshot */}
+          <div className="relative z-10">
+            <img
+              src={heroPoolPage}
+              alt=""
+              className="w-full rounded-xl shadow-2xl border border-border/50"
+              draggable={false}
+            />
+          </div>
+          
+          {/* Pool History Drawer - Overlapping on the right */}
+          <div className="absolute -right-4 md:-right-12 top-8 md:top-16 w-1/3 md:w-2/5 z-20">
+            <img
+              src={heroPoolHistory}
+              alt=""
+              className="w-full rounded-xl shadow-2xl border border-border/50"
+              draggable={false}
+            />
+          </div>
+        </div>
       </div>
     </section>
   );
