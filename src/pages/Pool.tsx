@@ -425,14 +425,20 @@ export default function Pool() {
             eventId: m.event_id || '',
             teamA: {
               team: teamA,
-              ownerId: homeOwnership?.member_id || '',
+              // For final matchups, use historical participant IDs (preserved even after elimination)
+              ownerId: status === 'final' 
+                ? (m.participant_a_member_id || homeOwnership?.member_id || '')
+                : (homeOwnership?.member_id || ''),
               score: event?.final_home_score ?? undefined,
               seriesWins: event?.series_home_wins ?? undefined,
               spread: line?.locked_line_payload?.home_spread ?? undefined,
             },
             teamB: {
               team: teamB,
-              ownerId: awayOwnership?.member_id || '',
+              // For final matchups, use historical participant IDs (preserved even after elimination)
+              ownerId: status === 'final' 
+                ? (m.participant_b_member_id || awayOwnership?.member_id || '')
+                : (awayOwnership?.member_id || ''),
               score: event?.final_away_score ?? undefined,
               seriesWins: event?.series_away_wins ?? undefined,
               spread: line?.locked_line_payload?.away_spread ?? undefined,
