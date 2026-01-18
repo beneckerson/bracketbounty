@@ -125,8 +125,11 @@ serve(async (req) => {
 
       // Determine winner based on pool mode and scoring rule
       let winnerMemberId: string | null = null;
+      let loserMemberId: string | null = null;
       let decidedBy: 'straight' | 'ats' | null = null;
       let resultType: 'UPSET' | 'CAPTURED' | 'ADVANCES' | null = null;
+      let homeCovered = false;
+      let awayCovered = false;
 
       if (pool.mode === 'capture' && pool.scoring_rule === 'ats' && lockedSpread) {
         decidedBy = 'ats';
@@ -140,7 +143,9 @@ serve(async (req) => {
 
         if (homeAdjusted > away_score) {
           // Home covers the spread
+          homeCovered = true;
           winnerMemberId = homeOwner?.member_id || null;
+          loserMemberId = awayOwner?.member_id || null;
           if (lockedSpread.home_spread < 0) {
             // Favorite covered
             resultType = 'ADVANCES';
@@ -150,7 +155,9 @@ serve(async (req) => {
           }
         } else if (homeAdjusted < away_score) {
           // Away covers the spread
+          awayCovered = true;
           winnerMemberId = awayOwner?.member_id || null;
+          loserMemberId = homeOwner?.member_id || null;
           if (lockedSpread.home_spread > 0) {
             // Away was the favorite and covered
             resultType = 'ADVANCES';
@@ -165,10 +172,14 @@ serve(async (req) => {
       } else {
         decidedBy = 'straight';
         if (home_score > away_score) {
+          homeCovered = true;
           winnerMemberId = homeOwner?.member_id || null;
+          loserMemberId = awayOwner?.member_id || null;
           resultType = 'ADVANCES';
         } else if (away_score > home_score) {
+          awayCovered = true;
           winnerMemberId = awayOwner?.member_id || null;
+          loserMemberId = homeOwner?.member_id || null;
           resultType = 'ADVANCES';
         }
       }
@@ -189,23 +200,18 @@ serve(async (req) => {
         continue;
       }
 
-      // Handle team capture in capture mode
-      if (pool.mode === 'capture' && winnerMemberId && resultType === 'CAPTURED') {
-        const loserMemberId = winnerMemberId === homeOwner?.member_id 
-          ? awayOwner?.member_id 
-          : homeOwner?.member_id;
+      // Handle team capture/elimination in capture mode
+      if (pool.mode === 'capture' && (homeCovered || awayCovered)) {
+        const losingTeamCode = homeCovered ? event.away_team : event.home_team;
         
-        const capturedTeamCode = winnerMemberId === homeOwner?.member_id
-          ? event.away_team
-          : event.home_team;
-
-        if (loserMemberId && capturedTeamCode) {
+        // If it's a CAPTURED result AND winner exists, winner takes loser's team
+        if (resultType === 'CAPTURED' && winnerMemberId && loserMemberId) {
           await supabase
             .from('ownership')
             .insert({
               pool_id: pool.id,
               member_id: winnerMemberId,
-              team_code: capturedTeamCode,
+              team_code: losingTeamCode,
               acquired_via: 'capture',
               from_matchup_id: matchup.id,
             });
@@ -215,7 +221,31 @@ serve(async (req) => {
             .delete()
             .eq('pool_id', pool.id)
             .eq('member_id', loserMemberId)
-            .eq('team_code', capturedTeamCode);
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} captured by winner`);
+        } 
+        // If loser exists but winner doesn't (unowned winning team), just eliminate loser
+        else if (loserMemberId && !winnerMemberId) {
+          await supabase
+            .from('ownership')
+            .delete()
+            .eq('pool_id', pool.id)
+            .eq('member_id', loserMemberId)
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} eliminated (loser lost to unowned team)`);
+        }
+        // Standard ADVANCES - the losing team is eliminated
+        else if (resultType === 'ADVANCES' && loserMemberId) {
+          await supabase
+            .from('ownership')
+            .delete()
+            .eq('pool_id', pool.id)
+            .eq('member_id', loserMemberId)
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} eliminated (favorite advanced)`);
         }
       }
 
