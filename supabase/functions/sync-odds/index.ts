@@ -341,32 +341,45 @@ serve(async (req) => {
           const awaySpread = spreadMarket.outcomes?.find((o: any) => o.name === event.away_team);
 
           if (homeSpread && awaySpread) {
-            const lineData = {
-              event_id: upsertedEvent.id,
-              source: 'the-odds-api',
-              book: selectedBookmaker.key,
-              locked_line_payload: {
-                home_spread: homeSpread.point,
-                away_spread: awaySpread.point,
-                home_team: event.home_team,
-                away_team: event.away_team,
-                fetched_at: new Date().toISOString(),
-              },
-            };
-
-            const { data: upsertedLine, error: lineError } = await supabase
+            // Check if line is already locked before updating
+            const { data: existingLine } = await supabase
               .from('lines')
-              .upsert(lineData, {
-                onConflict: 'event_id',
-                ignoreDuplicates: false
-              })
-              .select()
-              .single();
+              .select('locked_at')
+              .eq('event_id', upsertedEvent.id)
+              .maybeSingle();
 
-            if (lineError) {
-              console.error('Error upserting line:', lineError);
+            // Only update line if not already locked
+            if (existingLine?.locked_at) {
+              console.log(`Line for event ${upsertedEvent.id} is already locked, skipping update`);
+              syncedLines.push({ event_id: upsertedEvent.id, skipped: true, reason: 'already_locked' });
             } else {
-              syncedLines.push(upsertedLine);
+              const lineData = {
+                event_id: upsertedEvent.id,
+                source: 'the-odds-api',
+                book: selectedBookmaker.key,
+                locked_line_payload: {
+                  home_spread: homeSpread.point,
+                  away_spread: awaySpread.point,
+                  home_team: event.home_team,
+                  away_team: event.away_team,
+                  fetched_at: new Date().toISOString(),
+                },
+              };
+
+              const { data: upsertedLine, error: lineError } = await supabase
+                .from('lines')
+                .upsert(lineData, {
+                  onConflict: 'event_id',
+                  ignoreDuplicates: false
+                })
+                .select()
+                .single();
+
+              if (lineError) {
+                console.error('Error upserting line:', lineError);
+              } else {
+                syncedLines.push(upsertedLine);
+              }
             }
           }
         }
