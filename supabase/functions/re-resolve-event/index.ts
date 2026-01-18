@@ -129,55 +129,59 @@ serve(async (req) => {
 
       // 4d. Recalculate winner based on pool mode and corrected spread
       let winnerMemberId: string | null = null;
+      let loserMemberId: string | null = null;
       let decidedBy: 'straight' | 'ats' | null = null;
       let resultType: 'UPSET' | 'CAPTURED' | 'ADVANCES' | null = null;
+      let homeCovered = false;
+      let awayCovered = false;
 
       if (pool.mode === 'capture' && pool.scoring_rule === 'ats' && lockedSpread) {
         decidedBy = 'ats';
 
         // Standard ATS: Apply home spread to home score only
-        // If home is favorite (-1.5), they need to win by more than 1.5
-        // homeAdjusted = 33 + (-1.5) = 31.5, compare to away raw score of 30
         const homeAdjusted = home_score + lockedSpread.home_spread;
 
         console.log(`ATS calculation: Home ${home_score} + (${lockedSpread.home_spread}) = ${homeAdjusted} vs Away ${away_score}`);
 
         if (homeAdjusted > away_score) {
           // Home covers the spread
+          homeCovered = true;
           winnerMemberId = homeOwner?.member_id || null;
+          loserMemberId = awayOwner?.member_id || null;
           if (lockedSpread.home_spread < 0) {
-            // Favorite covered
             resultType = 'ADVANCES';
           } else {
-            // Underdog covered - they either won outright (UPSET) or lost but covered (CAPTURED)
             resultType = home_score > away_score ? 'UPSET' : 'CAPTURED';
           }
         } else if (homeAdjusted < away_score) {
           // Away covers the spread
+          awayCovered = true;
           winnerMemberId = awayOwner?.member_id || null;
+          loserMemberId = homeOwner?.member_id || null;
           if (lockedSpread.home_spread > 0) {
-            // Away was the favorite and covered
             resultType = 'ADVANCES';
           } else {
-            // Away was underdog - they either won outright (UPSET) or lost but covered (CAPTURED)
             resultType = away_score > home_score ? 'UPSET' : 'CAPTURED';
           }
         } else {
-          // Push - homeAdjusted === away_score
           console.log(`Push detected for matchup ${matchup.id}`);
         }
       } else {
         decidedBy = 'straight';
         if (home_score > away_score) {
+          homeCovered = true;
           winnerMemberId = homeOwner?.member_id || null;
+          loserMemberId = awayOwner?.member_id || null;
           resultType = 'ADVANCES';
         } else if (away_score > home_score) {
+          awayCovered = true;
           winnerMemberId = awayOwner?.member_id || null;
+          loserMemberId = homeOwner?.member_id || null;
           resultType = 'ADVANCES';
         }
       }
 
-      console.log(`Recalculated: winner=${winnerMemberId}, resultType=${resultType}, decidedBy=${decidedBy}`);
+      console.log(`Recalculated: winner=${winnerMemberId}, loser=${loserMemberId}, resultType=${resultType}, decidedBy=${decidedBy}`);
 
       // 4e. Update the matchup with corrected resolution
       const { error: updateMatchupError } = await supabase
@@ -195,37 +199,52 @@ serve(async (req) => {
         continue;
       }
 
-      // 4f. Handle team capture if applicable
-      if (pool.mode === 'capture' && winnerMemberId && resultType === 'CAPTURED') {
-        const loserMemberId = winnerMemberId === homeOwner?.member_id 
-          ? awayOwner?.member_id 
-          : homeOwner?.member_id;
+      // 4f. Handle team elimination/capture
+      if (pool.mode === 'capture' && (homeCovered || awayCovered)) {
+        const losingTeamCode = homeCovered ? event.away_team : event.home_team;
         
-        const capturedTeamCode = winnerMemberId === homeOwner?.member_id
-          ? event.away_team
-          : event.home_team;
-
-        if (loserMemberId && capturedTeamCode) {
-          // Insert new capture ownership
+        // If it's a CAPTURED result AND winner exists, winner takes loser's team
+        if (resultType === 'CAPTURED' && winnerMemberId && loserMemberId) {
           await supabase
             .from('ownership')
             .insert({
               pool_id: pool.id,
               member_id: winnerMemberId,
-              team_code: capturedTeamCode,
+              team_code: losingTeamCode,
               acquired_via: 'capture',
               from_matchup_id: matchup.id,
             });
 
-          // Delete loser's ownership of that team
           await supabase
             .from('ownership')
             .delete()
             .eq('pool_id', pool.id)
             .eq('member_id', loserMemberId)
-            .eq('team_code', capturedTeamCode);
-
-          console.log(`Team ${capturedTeamCode} captured by winner`);
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} captured by winner`);
+        } 
+        // If loser exists but winner doesn't (unowned winning team), just eliminate loser
+        else if (loserMemberId && !winnerMemberId) {
+          await supabase
+            .from('ownership')
+            .delete()
+            .eq('pool_id', pool.id)
+            .eq('member_id', loserMemberId)
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} eliminated (loser lost to unowned team)`);
+        }
+        // Standard ADVANCES - the losing team is eliminated  
+        else if (resultType === 'ADVANCES' && loserMemberId) {
+          await supabase
+            .from('ownership')
+            .delete()
+            .eq('pool_id', pool.id)
+            .eq('member_id', loserMemberId)
+            .eq('team_code', losingTeamCode);
+            
+          console.log(`Team ${losingTeamCode} eliminated (favorite advanced)`);
         }
       }
 
