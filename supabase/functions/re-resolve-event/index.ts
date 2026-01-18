@@ -135,26 +135,35 @@ serve(async (req) => {
       if (pool.mode === 'capture' && pool.scoring_rule === 'ats' && lockedSpread) {
         decidedBy = 'ats';
 
+        // Standard ATS: Apply home spread to home score only
+        // If home is favorite (-1.5), they need to win by more than 1.5
+        // homeAdjusted = 33 + (-1.5) = 31.5, compare to away raw score of 30
         const homeAdjusted = home_score + lockedSpread.home_spread;
-        const awayAdjusted = away_score + lockedSpread.away_spread;
 
-        console.log(`ATS calculation: Home adjusted ${homeAdjusted}, Away adjusted ${awayAdjusted}`);
+        console.log(`ATS calculation: Home ${home_score} + (${lockedSpread.home_spread}) = ${homeAdjusted} vs Away ${away_score}`);
 
-        if (homeAdjusted > awayAdjusted) {
+        if (homeAdjusted > away_score) {
+          // Home covers the spread
           winnerMemberId = homeOwner?.member_id || null;
           if (lockedSpread.home_spread < 0) {
+            // Favorite covered
             resultType = 'ADVANCES';
           } else {
+            // Underdog covered - they either won outright (UPSET) or lost but covered (CAPTURED)
             resultType = home_score > away_score ? 'UPSET' : 'CAPTURED';
           }
-        } else if (awayAdjusted > homeAdjusted) {
+        } else if (homeAdjusted < away_score) {
+          // Away covers the spread
           winnerMemberId = awayOwner?.member_id || null;
-          if (lockedSpread.away_spread < 0) {
+          if (lockedSpread.home_spread > 0) {
+            // Away was the favorite and covered
             resultType = 'ADVANCES';
           } else {
+            // Away was underdog - they either won outright (UPSET) or lost but covered (CAPTURED)
             resultType = away_score > home_score ? 'UPSET' : 'CAPTURED';
           }
         } else {
+          // Push - homeAdjusted === away_score
           console.log(`Push detected for matchup ${matchup.id}`);
         }
       } else {
