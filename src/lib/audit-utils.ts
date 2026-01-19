@@ -21,7 +21,12 @@ interface AuditPayload {
   away_score?: number;
   winner_team?: string;
   loser_team?: string;
-  spread?: { home_spread?: number; away_spread?: number };
+  spread?: { 
+    home_spread?: number; 
+    away_spread?: number;
+    home_team?: string;
+    away_team?: string;
+  };
   
   // capture-specific
   capturer_id?: string;
@@ -30,7 +35,44 @@ interface AuditPayload {
   favorite_team?: string;
   underdog_spread?: number;
   
+  // ownership_assigned
+  team_code?: string;
+  member_display_name?: string;
+  reason?: string;
+  
   [key: string]: unknown;
+}
+
+/**
+ * Determine teams from spread data when explicit fields are missing
+ */
+function determineTeamsFromSpread(payload: AuditPayload): { 
+  winner: string; 
+  loser: string; 
+  favorite: string; 
+  underdog: string 
+} {
+  const spread = payload.spread;
+  if (!spread) return { winner: 'Team', loser: 'Team', favorite: 'Favorite', underdog: 'Underdog' };
+  
+  const homeSpread = spread.home_spread ?? 0;
+  const homeTeam = spread.home_team || 'Home';
+  const awayTeam = spread.away_team || 'Away';
+  
+  // Positive spread = underdog, Negative spread = favorite
+  const isHomeFavorite = homeSpread < 0;
+  const favorite = isHomeFavorite ? homeTeam : awayTeam;
+  const underdog = isHomeFavorite ? awayTeam : homeTeam;
+  
+  // For ADVANCES, the favorite won and covered
+  // For CAPTURED, the favorite won but underdog covered
+  // For UPSET, the underdog won outright
+  return {
+    winner: payload.result_type === 'UPSET' ? underdog : favorite,
+    loser: payload.result_type === 'UPSET' ? favorite : underdog,
+    favorite,
+    underdog
+  };
 }
 
 /**
@@ -60,11 +102,16 @@ export function generateAuditDescription(
       
       // Favorite covers (wins by more than spread) - no capture
       if (resultType === 'ADVANCES') {
-        // Fallback: use winner_member_id if no specific capturer_id
         const winnerName = payload.winner_member_id 
           ? memberMap[payload.winner_member_id] || 'Unknown'
           : 'No owner';
-        const teamName = payload.winner_team || 'Team';
+        
+        // Try multiple fallback sources for team name
+        const teams = determineTeamsFromSpread(payload);
+        const teamName = payload.winner_team 
+          || payload.favorite_team 
+          || teams.favorite;
+        
         const spread = formatSpread(payload.spread, payload.winner_team, payload);
         return `${teamName}${spread} covered and advances. ${winnerName} moves on.`;
       }
@@ -82,18 +129,26 @@ export function generateAuditDescription(
       // TRUE CAPTURE: Underdog loses but covers the spread
       // The favorite advances, but ownership transfers to underdog's owner
       if (resultType === 'CAPTURED') {
-        // Fallback: use winner/loser_member_id if capturer/captured_from not present
         const capturerId = payload.capturer_id || payload.winner_member_id;
         const capturedFromId = payload.captured_from_id || payload.loser_member_id;
+        
         const capturer = capturerId 
           ? memberMap[capturerId] || 'Unknown'
           : 'Unknown';
+        
+        // For old entries without captured_from_id, use "their opponent" as fallback
         const capturedFrom = capturedFromId 
-          ? memberMap[capturedFromId] || 'Unknown'
-          : 'Unknown';
-        const underdogTeam = payload.underdog_team || 'Underdog';
-        const favoriteTeam = payload.favorite_team || 'Favorite';
-        const spread = payload.underdog_spread ? ` (+${Math.abs(payload.underdog_spread)})` : '';
+          ? memberMap[capturedFromId] || 'their opponent'
+          : 'their opponent';
+        
+        // Try multiple fallback sources for team names
+        const teams = determineTeamsFromSpread(payload);
+        const underdogTeam = payload.underdog_team || teams.underdog;
+        const favoriteTeam = payload.favorite_team || teams.favorite;
+        
+        const spread = payload.underdog_spread 
+          ? ` (+${Math.abs(payload.underdog_spread)})` 
+          : '';
         return `${underdogTeam}${spread} loses but covers. ${capturer} captures ${favoriteTeam} from ${capturedFrom}.`;
       }
 
@@ -102,6 +157,13 @@ export function generateAuditDescription(
         ? ` (${payload.home_score}-${payload.away_score})`
         : '';
       return `Matchup resolved${score}`;
+    }
+
+    case 'ownership_assigned': {
+      const teamCode = payload.team_code || 'team';
+      const memberName = payload.member_display_name || 'member';
+      const reason = payload.reason || '';
+      return `${teamCode} assigned to ${memberName}${reason ? `: ${reason}` : ''}`;
     }
 
     default:
