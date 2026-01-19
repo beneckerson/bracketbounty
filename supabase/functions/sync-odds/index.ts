@@ -384,6 +384,78 @@ serve(async (req) => {
           }
         }
       }
+
+      // === Bridge: Auto-create pool_matchups for active pools ===
+      // This ensures new round events are automatically linked to pools
+      const { data: activePools } = await supabase
+        .from('pools')
+        .select(`
+          id, 
+          competition_key, 
+          selected_teams,
+          pool_rounds (id, round_key)
+        `)
+        .eq('status', 'active')
+        .eq('competition_key', competition_key);
+
+      for (const pool of activePools || []) {
+        const selectedTeams: string[] = pool.selected_teams || [];
+        const homeInPool = selectedTeams.includes(upsertedEvent.home_team);
+        const awayInPool = selectedTeams.includes(upsertedEvent.away_team);
+        
+        // Only create matchup if at least one team is in the pool
+        if (!homeInPool && !awayInPool) {
+          console.log(`Skipping pool ${pool.id}: neither ${upsertedEvent.home_team} nor ${upsertedEvent.away_team} in selected_teams`);
+          continue;
+        }
+        
+        // Find the matching round
+        const matchingRound = (pool.pool_rounds as any[])?.find(
+          (r: any) => r.round_key === upsertedEvent.round_key
+        );
+        if (!matchingRound) {
+          console.log(`Skipping pool ${pool.id}: no matching round for ${upsertedEvent.round_key}`);
+          continue;
+        }
+        
+        // Check if matchup already exists
+        const { data: existingMatchup } = await supabase
+          .from('pool_matchups')
+          .select('id')
+          .eq('pool_id', pool.id)
+          .eq('event_id', upsertedEvent.id)
+          .maybeSingle();
+        
+        if (existingMatchup) {
+          console.log(`Pool ${pool.id} already has matchup for event ${upsertedEvent.id}`);
+          continue;
+        }
+        
+        // Get current ownership for participant IDs
+        const { data: ownership } = await supabase
+          .from('ownership')
+          .select('team_code, member_id')
+          .eq('pool_id', pool.id)
+          .in('team_code', [upsertedEvent.home_team, upsertedEvent.away_team]);
+        
+        const ownerMap: Record<string, string> = {};
+        (ownership || []).forEach((o: any) => { ownerMap[o.team_code] = o.member_id; });
+        
+        // Create the matchup
+        const { error: matchupError } = await supabase.from('pool_matchups').insert({
+          pool_id: pool.id,
+          round_id: matchingRound.id,
+          event_id: upsertedEvent.id,
+          participant_a_member_id: ownerMap[upsertedEvent.home_team] || null,
+          participant_b_member_id: ownerMap[upsertedEvent.away_team] || null,
+        });
+        
+        if (matchupError) {
+          console.error(`Error creating matchup for pool ${pool.id}:`, matchupError);
+        } else {
+          console.log(`Created matchup for pool ${pool.id}: ${upsertedEvent.home_team} vs ${upsertedEvent.away_team} (round: ${upsertedEvent.round_key})`);
+        }
+      }
     }
 
     // Also sync to teams reference table if we want
