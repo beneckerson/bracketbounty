@@ -160,10 +160,15 @@ export function generateAuditDescription(
     }
 
     case 'ownership_assigned': {
-      const teamCode = payload.team_code || 'team';
+      const teamName = payload.team_name as string | undefined;
+      const teamCode = payload.team_code || 'Team';
       const memberName = payload.member_display_name || 'member';
-      const reason = payload.reason || '';
-      return `${teamCode} assigned to ${memberName}${reason ? `: ${reason}` : ''}`;
+      
+      // Use full name if available, otherwise format the code (remove _NFL suffix)
+      const displayTeam = teamName || teamCode.replace(/_NFL$|_NBA$|_MLB$|_NHL$/, '');
+      
+      // Don't show admin reasons - they're internal notes
+      return `${displayTeam} was assigned to ${memberName}`;
     }
 
     default:
