@@ -249,7 +249,17 @@ serve(async (req) => {
         }
       }
 
-      // Write audit log
+      // Determine team roles for audit log
+      const isHomeUnderdog = lockedSpread ? lockedSpread.home_spread > 0 : false;
+      const winnerTeam = homeCovered ? event.home_team : event.away_team;
+      const loserTeam = homeCovered ? event.away_team : event.home_team;
+      const underdogTeam = isHomeUnderdog ? event.home_team : event.away_team;
+      const favoriteTeam = isHomeUnderdog ? event.away_team : event.home_team;
+      const underdogSpread = lockedSpread 
+        ? (isHomeUnderdog ? lockedSpread.home_spread : lockedSpread.away_spread)
+        : null;
+
+      // Write audit log with complete payload for proper descriptions
       await supabase
         .from('audit_log')
         .insert({
@@ -259,11 +269,21 @@ serve(async (req) => {
             matchup_id: matchup.id,
             event_id,
             winner_member_id: winnerMemberId,
+            loser_member_id: loserMemberId,
             decided_by: decidedBy,
             result_type: resultType,
             home_score,
             away_score,
             spread: lockedSpread,
+            // Team information for better descriptions
+            winner_team: winnerTeam,
+            loser_team: loserTeam,
+            underdog_team: underdogTeam,
+            favorite_team: favoriteTeam,
+            underdog_spread: underdogSpread,
+            // Capture-specific fields
+            capturer_id: resultType === 'CAPTURED' ? winnerMemberId : null,
+            captured_from_id: resultType === 'CAPTURED' ? loserMemberId : null,
           },
         });
 

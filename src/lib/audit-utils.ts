@@ -60,9 +60,10 @@ export function generateAuditDescription(
       
       // Favorite covers (wins by more than spread) - no capture
       if (resultType === 'ADVANCES') {
+        // Fallback: use winner_member_id if no specific capturer_id
         const winnerName = payload.winner_member_id 
           ? memberMap[payload.winner_member_id] || 'Unknown'
-          : 'Unknown';
+          : 'No owner';
         const teamName = payload.winner_team || 'Team';
         const spread = formatSpread(payload.spread, payload.winner_team, payload);
         return `${teamName}${spread} covered and advances. ${winnerName} moves on.`;
@@ -72,7 +73,7 @@ export function generateAuditDescription(
       if (resultType === 'UPSET') {
         const winnerName = payload.winner_member_id 
           ? memberMap[payload.winner_member_id] || 'Unknown'
-          : 'Unknown';
+          : 'No owner';
         const teamName = payload.underdog_team || payload.winner_team || 'Team';
         const spread = payload.underdog_spread ? ` (+${Math.abs(payload.underdog_spread)})` : '';
         return `${teamName}${spread} wins outright and advances! ${winnerName} moves on.`;
@@ -81,11 +82,14 @@ export function generateAuditDescription(
       // TRUE CAPTURE: Underdog loses but covers the spread
       // The favorite advances, but ownership transfers to underdog's owner
       if (resultType === 'CAPTURED') {
-        const capturer = payload.capturer_id 
-          ? memberMap[payload.capturer_id] || 'Unknown'
+        // Fallback: use winner/loser_member_id if capturer/captured_from not present
+        const capturerId = payload.capturer_id || payload.winner_member_id;
+        const capturedFromId = payload.captured_from_id || payload.loser_member_id;
+        const capturer = capturerId 
+          ? memberMap[capturerId] || 'Unknown'
           : 'Unknown';
-        const capturedFrom = payload.captured_from_id 
-          ? memberMap[payload.captured_from_id] || 'Unknown'
+        const capturedFrom = capturedFromId 
+          ? memberMap[capturedFromId] || 'Unknown'
           : 'Unknown';
         const underdogTeam = payload.underdog_team || 'Underdog';
         const favoriteTeam = payload.favorite_team || 'Favorite';
