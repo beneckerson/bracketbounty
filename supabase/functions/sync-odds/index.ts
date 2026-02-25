@@ -14,6 +14,7 @@ const SPORT_KEY_MAP: Record<string, string> = {
   'nba_playoffs': 'basketball_nba',
   'nhl_playoffs': 'icehockey_nhl',
   'mlb_playoffs': 'baseball_mlb',
+  'march_madness': 'basketball_ncaab',
 };
 
 // Map API team names to our team codes
@@ -99,11 +100,14 @@ const TEAM_CODE_MAP: Record<string, { code: string; abbreviation: string; color:
 };
 
 function getTeamInfo(teamName: string): { code: string; abbreviation: string; color: string } {
-  return TEAM_CODE_MAP[teamName] || { 
-    code: teamName.substring(0, 3).toUpperCase(), 
-    abbreviation: teamName.split(' ').pop() || teamName,
-    color: 'team-gray' 
-  };
+  // Check hardcoded map first
+  if (TEAM_CODE_MAP[teamName]) {
+    return TEAM_CODE_MAP[teamName];
+  }
+  // Dynamic fallback: generate UPPER_SNAKE_CASE code from team name (matches sync-teams logic)
+  const code = teamName.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+  const abbreviation = teamName.split(' ').pop() || teamName;
+  return { code, abbreviation, color: 'team-gray' };
 }
 
 // Detect NFL playoff round based on game date and total games in sync
@@ -284,7 +288,10 @@ serve(async (req) => {
       
       // Detect the round for this event
       const eventStartTime = new Date(event.commence_time);
-      const roundInfo = detectPlayoffRound(competition_key, eventStartTime, totalGames);
+      // For march_madness, rounds are admin-assigned — don't auto-detect
+      const roundInfo = competition_key === 'march_madness'
+        ? { round_key: 'round_of_64', round_order: 1 } // default; admin will reassign
+        : detectPlayoffRound(competition_key, eventStartTime, totalGames);
       
       console.log(`Event ${event.home_team} vs ${event.away_team} -> Round: ${roundInfo.round_key} (order: ${roundInfo.round_order})`);
 

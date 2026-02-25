@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Header } from '@/components/layout/Header';
 import { RosterEditor } from '@/components/admin/RosterEditor';
 import { EventsManager } from '@/components/admin/EventsManager';
+import { NCAAGameSelector } from '@/components/admin/NCAAGameSelector';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -173,6 +174,7 @@ export default function Rosters() {
       nba_playoffs: 'NBA',
       nhl_playoffs: 'NHL',
       mlb_playoffs: 'MLB',
+      march_madness: 'NCAAB',
     };
     const league = leagueMap[selectedCompetition];
     if (!league) {
@@ -393,6 +395,11 @@ export default function Rosters() {
                   <Calendar className="h-4 w-4" />
                   Events
                 </TabsTrigger>
+                {selectedCompetition === 'march_madness' && (
+                  <TabsTrigger value="ncaa-selector" className="flex items-center gap-2">
+                    🏀 Game Selector
+                  </TabsTrigger>
+                )}
               </TabsList>
               <TabsContent value="teams">
                 <RosterEditor
@@ -405,6 +412,11 @@ export default function Rosters() {
                   competitionKey={selectedCompetition}
                 />
               </TabsContent>
+              {selectedCompetition === 'march_madness' && (
+                <TabsContent value="ncaa-selector">
+                  <NCAAGameSelector />
+                </TabsContent>
+              )}
             </Tabs>
           ) : (
             <Card className="border-dashed">

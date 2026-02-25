@@ -80,6 +80,19 @@ export const COMPETITIONS: CompetitionConfig[] = [
     season: '2026',
     oddsApiSportKey: 'baseball_mlb',
   },
+  {
+    key: 'march_madness',
+    name: 'NCAA Tournament',
+    shortName: 'NCAAT',
+    description: '64-team single-elimination bracket with First Four play-ins',
+    format: 'single_elimination',
+    captureEnabled: true,
+    defaultTeamsPerPlayer: 1,
+    maxPlayers: 64,
+    icon: '🏀',
+    season: '2025-2026',
+    oddsApiSportKey: 'basketball_ncaab',
+  },
 ];
 
 export function getCompetition(key: string): CompetitionConfig | undefined {

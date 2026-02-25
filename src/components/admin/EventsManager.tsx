@@ -68,6 +68,17 @@ const MLB_ROUNDS = [
   { key: 'world_series', name: 'World Series', order: 4 },
 ];
 
+// Round options for NCAA Tournament (March Madness)
+const MARCH_MADNESS_ROUNDS = [
+  { key: 'first_four', name: 'First Four', order: 0 },
+  { key: 'round_of_64', name: 'Round of 64', order: 1 },
+  { key: 'round_of_32', name: 'Round of 32', order: 2 },
+  { key: 'sweet_sixteen', name: 'Sweet Sixteen', order: 3 },
+  { key: 'elite_eight', name: 'Elite Eight', order: 4 },
+  { key: 'final_four', name: 'Final Four', order: 5 },
+  { key: 'championship', name: 'Championship', order: 6 },
+];
+
 function getRoundsForCompetition(competitionKey: string) {
   switch (competitionKey) {
     case 'cfp':
@@ -76,6 +87,8 @@ function getRoundsForCompetition(competitionKey: string) {
       return NFL_ROUNDS;
     case 'mlb_playoffs':
       return MLB_ROUNDS;
+    case 'march_madness':
+      return MARCH_MADNESS_ROUNDS;
     case 'nba_playoffs':
     case 'nhl_playoffs':
     default:
@@ -100,6 +113,12 @@ function getRoundName(roundKey: string | undefined): string {
     division_series: 'Division Series',
     lcs: 'League Championship',
     world_series: 'World Series',
+    first_four: 'First Four',
+    round_of_64: 'Round of 64',
+    round_of_32: 'Round of 32',
+    sweet_sixteen: 'Sweet Sixteen',
+    elite_eight: 'Elite Eight',
+    final_four: 'Final Four',
   };
   return roundNames[roundKey] || roundKey;
 }
