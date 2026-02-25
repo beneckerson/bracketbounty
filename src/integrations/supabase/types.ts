@@ -117,6 +117,7 @@ export type Database = {
           created_at: string
           event_type: Database["public"]["Enums"]["event_type"]
           external_event_id: string | null
+          feeds_into_event_id: string | null
           final_away_score: number | null
           final_home_score: number | null
           home_team: string
@@ -136,6 +137,7 @@ export type Database = {
           created_at?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           external_event_id?: string | null
+          feeds_into_event_id?: string | null
           final_away_score?: number | null
           final_home_score?: number | null
           home_team: string
@@ -155,6 +157,7 @@ export type Database = {
           created_at?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           external_event_id?: string | null
+          feeds_into_event_id?: string | null
           final_away_score?: number | null
           final_home_score?: number | null
           home_team?: string
@@ -167,7 +170,15 @@ export type Database = {
           status?: Database["public"]["Enums"]["event_status"]
           winner_team_code?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "events_feeds_into_event_id_fkey"
+            columns: ["feeds_into_event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       lines: {
         Row: {

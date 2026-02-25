@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.auto-lock-lines]
 verify_jwt = false
+
+[functions.fetch-ncaab-events]
+verify_jwt = false

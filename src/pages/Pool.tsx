@@ -72,6 +72,7 @@ interface EventData {
   series_away_wins: number | null;
   start_time: string | null;
   best_of: number | null;
+  feeds_into_event_id: string | null;
 }
 
 interface TeamData {
@@ -326,6 +327,24 @@ export default function Pool() {
         events = (eventsData || []) as EventData[];
       }
 
+      // Fetch First Four feeder events (events that feed INTO these events)
+      let feederEvents: EventData[] = [];
+      if (poolData.competition_key === 'march_madness' && eventIds.length > 0) {
+        const { data: feeders } = await supabase
+          .from('events')
+          .select('*')
+          .filter('feeds_into_event_id', 'in', `(${eventIds.join(',')})`);
+        feederEvents = (feeders || []) as EventData[];
+      }
+
+      // Build feeder map: target_event_id -> feeder_event
+      const feederMap: Record<string, EventData> = {};
+      feederEvents.forEach(f => {
+        if (f.feeds_into_event_id) {
+          feederMap[f.feeds_into_event_id] = f;
+        }
+      });
+
       // Fetch lines for spreads (now publicly accessible)
       let lines: LineData[] = [];
       if (eventIds.length > 0) {
@@ -336,9 +355,13 @@ export default function Pool() {
         lines = (linesData || []) as LineData[];
       }
 
-      // Get team codes from events
+      // Get team codes from events (including feeder events)
       const teamCodes = new Set<string>();
       events.forEach(e => {
+        teamCodes.add(e.home_team);
+        teamCodes.add(e.away_team);
+      });
+      feederEvents.forEach(e => {
         teamCodes.add(e.home_team);
         teamCodes.add(e.away_team);
       });
@@ -398,18 +421,47 @@ export default function Pool() {
           const homeOwnership = ownershipByTeam[homeTeamCode];
           const awayOwnership = ownershipByTeam[awayTeamCode];
 
+          // Check if this event has a First Four feeder
+          const feederEvent = event ? feederMap[event.id] : null;
+          const feederHomeTeam = feederEvent ? teamMap[feederEvent.home_team] : null;
+          const feederAwayTeam = feederEvent ? teamMap[feederEvent.away_team] : null;
+
+          // For play-in pairs: if a feeder exists and feeder is not yet resolved,
+          // show "Play-in Winner (Team A / Team B)" as the team name
+          function getPlayinTeamName(teamCode: string, teamData: TeamData | undefined): { name: string; abbreviation: string } {
+            if (feederEvent && feederEvent.status !== 'final') {
+              // Check if this team code matches either feeder team
+              const feederTeamCodes = [feederEvent.home_team, feederEvent.away_team];
+              if (feederTeamCodes.includes(teamCode) || !teamData) {
+                const hName = feederHomeTeam?.abbreviation || feederEvent.home_team;
+                const aName = feederAwayTeam?.abbreviation || feederEvent.away_team;
+                return {
+                  name: `Play-in Winner (${feederHomeTeam?.name || feederEvent.home_team} / ${feederAwayTeam?.name || feederEvent.away_team})`,
+                  abbreviation: `${hName}/${aName}`,
+                };
+              }
+            }
+            return {
+              name: teamData?.name || teamCode,
+              abbreviation: teamData?.abbreviation || teamCode.substring(0, 3).toUpperCase(),
+            };
+          }
+
+          const homeDisplay = getPlayinTeamName(homeTeamCode, homeTeamData);
+          const awayDisplay = getPlayinTeamName(awayTeamCode, awayTeamData);
+
           const teamA: Team = {
             code: homeTeamCode,
-            name: homeTeamData?.name || homeTeamCode,
-            abbreviation: homeTeamData?.abbreviation || homeTeamCode.substring(0, 3).toUpperCase(),
+            name: homeDisplay.name,
+            abbreviation: homeDisplay.abbreviation,
             seed: 0,
             color: homeTeamData?.color || '#888888',
           };
 
           const teamB: Team = {
             code: awayTeamCode,
-            name: awayTeamData?.name || awayTeamCode,
-            abbreviation: awayTeamData?.abbreviation || awayTeamCode.substring(0, 3).toUpperCase(),
+            name: awayDisplay.name,
+            abbreviation: awayDisplay.abbreviation,
             seed: 0,
             color: awayTeamData?.color || '#888888',
           };

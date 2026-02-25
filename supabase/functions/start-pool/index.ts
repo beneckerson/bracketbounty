@@ -43,6 +43,15 @@ const ROUND_CONFIGS: Record<string, RoundConfig[]> = {
     { key: 'championship', name: 'Championship Series', order: 3 },
     { key: 'world_series', name: 'World Series', order: 4 },
   ],
+  march_madness: [
+    { key: 'first_four', name: 'First Four', order: 0 },
+    { key: 'round_of_64', name: 'Round of 64', order: 1 },
+    { key: 'round_of_32', name: 'Round of 32', order: 2 },
+    { key: 'sweet_sixteen', name: 'Sweet Sixteen', order: 3 },
+    { key: 'elite_eight', name: 'Elite Eight', order: 4 },
+    { key: 'final_four', name: 'Final Four', order: 5 },
+    { key: 'championship', name: 'Championship', order: 6 },
+  ],
 };
 
 Deno.serve(async (req) => {
