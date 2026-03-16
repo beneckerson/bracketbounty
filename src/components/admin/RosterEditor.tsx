@@ -516,6 +516,27 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
             </div>
           </div>
         )}
+
+        {/* Manual Team Code Input */}
+        <div className="pt-4 border-t border-border">
+          <p className="text-sm font-medium mb-3">Add Team by Code</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. Tennessee Volunteers"
+              value={manualTeamCode}
+              onChange={(e) => setManualTeamCode(e.target.value)}
+              className="max-w-xs"
+              onKeyDown={(e) => e.key === 'Enter' && addManualTeam()}
+            />
+            <Button variant="outline" size="sm" onClick={addManualTeam} disabled={!manualTeamCode.trim()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Name will be converted to UPPER_SNAKE_CASE team code automatically.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
