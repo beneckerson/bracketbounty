@@ -707,6 +707,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                           <TableHead>Start Time</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Round</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -718,6 +719,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                             <TableRow key={event.id} className={hasChange ? 'bg-primary/5' : ''}>
                               <TableCell className="font-medium">
                                 {event.away_team} @ {event.home_team}
+                                {event.external_event_id && (
+                                  <span className="ml-1 text-xs text-muted-foreground" title="API-imported event">(API)</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {event.start_time ? (
@@ -752,6 +756,18 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex gap-1 justify-end">
+                                  {event.status === 'scheduled' && (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(event)} title="Edit event">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteEvent(event)} title="Delete event">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
