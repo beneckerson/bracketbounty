@@ -115,6 +115,16 @@ export function NCAAGameSelector() {
     return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
   }
 
+  function toAbbreviation(name: string): string {
+    // Use initials of multi-word names to avoid duplicates like "Eagles"
+    const words = name.split(/\s+/);
+    if (words.length <= 2) return name;
+    // For names like "Boston College Eagles", use "BC Eagles"
+    const mascot = words[words.length - 1];
+    const initials = words.slice(0, -1).map(w => w[0]).join('');
+    return `${initials} ${mascot}`;
+  }
+
   async function handleSave() {
     const games = Object.values(selectedGames);
     if (games.length === 0) {
@@ -159,8 +169,8 @@ export function NCAAGameSelector() {
 
         // Upsert teams
         const teams = [
-          { code: homeCode, name: game.event.home_team, abbreviation: game.event.home_team.split(' ').pop() || homeCode, league: 'NCAAB' },
-          { code: awayCode, name: game.event.away_team, abbreviation: game.event.away_team.split(' ').pop() || awayCode, league: 'NCAAB' },
+          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB' },
+          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB' },
         ];
         await supabase.from('teams').upsert(teams, { onConflict: 'code', ignoreDuplicates: true });
       }

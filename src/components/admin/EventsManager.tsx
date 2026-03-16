@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 
@@ -136,6 +136,15 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [awayScore, setAwayScore] = useState('');
   const [commissionerNote, setCommissionerNote] = useState('');
   const [resolving, setResolving] = useState(false);
+
+  // Create event dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createHomeTeam, setCreateHomeTeam] = useState('');
+  const [createAwayTeam, setCreateAwayTeam] = useState('');
+  const [createRoundKey, setCreateRoundKey] = useState('round_of_64');
+  const [createStartTime, setCreateStartTime] = useState('');
+  const [createFeedsInto, setCreateFeedsInto] = useState('');
+  const [creating, setCreating] = useState(false);
 
   const rounds = getRoundsForCompetition(competitionKey);
 
@@ -312,6 +321,70 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setResolving(false);
   }
 
+  async function handleCreateEvent() {
+    if (!createHomeTeam.trim() || !createAwayTeam.trim()) {
+      toast.error('Please enter both team codes');
+      return;
+    }
+
+    const round = rounds.find(r => r.key === createRoundKey);
+    if (!round) return;
+
+    setCreating(true);
+    try {
+      const homeCode = createHomeTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const awayCode = createAwayTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+      // Insert event with NO external_event_id (manual marker)
+      const { data: newEvent, error } = await supabase
+        .from('events')
+        .insert({
+          competition_key: competitionKey,
+          round_key: createRoundKey,
+          round_order: round.order,
+          home_team: homeCode,
+          away_team: awayCode,
+          start_time: createStartTime || null,
+          event_type: 'game' as const,
+          status: 'scheduled' as const,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If feeds_into is set, link the First Four event to this new R64 event
+      if (createFeedsInto) {
+        await supabase
+          .from('events')
+          .update({ feeds_into_event_id: newEvent.id })
+          .eq('id', createFeedsInto);
+      }
+
+      // Also upsert both teams into the teams table
+      await supabase.from('teams').upsert([
+        { code: homeCode, name: createHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
+        { code: awayCode, name: createAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+      ], { onConflict: 'code', ignoreDuplicates: true });
+
+      toast.success(`Created event: ${awayCode} @ ${homeCode}`);
+      setShowCreateDialog(false);
+      setCreateHomeTeam('');
+      setCreateAwayTeam('');
+      setCreateRoundKey('round_of_64');
+      setCreateStartTime('');
+      setCreateFeedsInto('');
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      toast.error(error.message || 'Failed to create event');
+    }
+    setCreating(false);
+  }
+
+  // Get first four events for feeds-into dropdown
+  const firstFourEvents = events.filter(e => e.round_key === 'first_four');
+
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   // Separate events into pending resolution and resolved
@@ -352,6 +425,14 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
               </CardDescription>
             </div>
             <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
               <Button
                 variant="outline"
                 size="sm"
@@ -656,6 +737,99 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
             <Button onClick={handleResolve} disabled={resolving}>
               {resolving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Resolve {selectedEvent?.pending_matchup_count || 0} Matchup{(selectedEvent?.pending_matchup_count || 0) !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Event Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Event Manually</DialogTitle>
+            <DialogDescription>
+              Add a game that doesn't exist in the Odds API yet (e.g., R64 games with TBD First Four opponents).
+              When the API starts listing this game, it will be automatically adopted — no duplicates.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="create-home">Home Team (code or name)</Label>
+                <Input
+                  id="create-home"
+                  value={createHomeTeam}
+                  onChange={(e) => setCreateHomeTeam(e.target.value)}
+                  placeholder="e.g. Tennessee Volunteers"
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-away">Away Team (code or name)</Label>
+                <Input
+                  id="create-away"
+                  value={createAwayTeam}
+                  onChange={(e) => setCreateAwayTeam(e.target.value)}
+                  placeholder="e.g. First Four Winner"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Round</Label>
+                <Select value={createRoundKey} onValueChange={setCreateRoundKey}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rounds.map(r => (
+                      <SelectItem key={r.key} value={r.key}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="create-time">Start Time (optional)</Label>
+                <Input
+                  id="create-time"
+                  type="datetime-local"
+                  value={createStartTime}
+                  onChange={(e) => setCreateStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {firstFourEvents.length > 0 && (
+              <div>
+                <Label>Linked First Four Game (optional)</Label>
+                <Select value={createFeedsInto || 'none'} onValueChange={v => setCreateFeedsInto(v === 'none' ? '' : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No play-in link" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No play-in link</SelectItem>
+                    {firstFourEvents.map(ff => (
+                      <SelectItem key={ff.id} value={ff.id}>
+                        {ff.away_team} / {ff.home_team}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Links a First Four game so its winner feeds into this event.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateEvent} disabled={creating}>
+              {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create Event
             </Button>
           </DialogFooter>
         </DialogContent>

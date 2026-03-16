@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Trash2, Check, X, Upload, Save, Users } from 'lucide-react';
+import { Plus, Trash2, Check, X, Upload, Save, Users, RefreshCw } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 
 interface RosterEntry {
@@ -53,6 +53,8 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Map<string, Partial<RosterEntry>>>(new Map());
+  const [manualTeamCode, setManualTeamCode] = useState('');
+  const [syncingFromEvents, setSyncingFromEvents] = useState(false);
 
   const league = getLeagueFromCompetition(competitionKey);
   const competition = COMPETITIONS.find(c => c.key === competitionKey);
@@ -219,6 +221,127 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
     }
   }
 
+  // Sync teams from events already in the database
+  async function syncFromEvents() {
+    if (!user) return;
+    setSyncingFromEvents(true);
+    try {
+      // Get all events for this competition
+      const { data: eventsData, error } = await supabase
+        .from('events')
+        .select('home_team, away_team')
+        .eq('competition_key', competitionKey);
+
+      if (error) throw error;
+
+      // Extract unique team codes
+      const teamCodes = new Set<string>();
+      (eventsData || []).forEach(e => {
+        teamCodes.add(e.home_team);
+        teamCodes.add(e.away_team);
+      });
+
+      // Filter out teams already in roster
+      const existingCodes = new Set(roster.map(r => r.team_code));
+      const newCodes = [...teamCodes].filter(c => !existingCodes.has(c));
+
+      if (newCodes.length === 0) {
+        toast.info('All teams from events are already in the roster');
+        setSyncingFromEvents(false);
+        return;
+      }
+
+      // Upsert teams into teams table (in case they don't exist)
+      const teamsToUpsert = newCodes.map(code => ({
+        code,
+        name: code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        abbreviation: code,
+        league: league,
+      }));
+      await supabase.from('teams').upsert(teamsToUpsert, { onConflict: 'code', ignoreDuplicates: true });
+
+      // Add to competition_rosters
+      const rosterInserts = newCodes.map(code => ({
+        competition_key: competitionKey,
+        season,
+        team_code: code,
+        added_by: user.id,
+      }));
+
+      const { data: newRoster, error: rosterError } = await supabase
+        .from('competition_rosters')
+        .insert(rosterInserts)
+        .select('id, team_code, seed, is_eliminated, eliminated_at');
+
+      if (rosterError) throw rosterError;
+
+      setRoster([...roster, ...(newRoster || [])]);
+
+      // Refresh available teams
+      const { data: refreshedTeams } = await supabase
+        .from('teams')
+        .select('code, name, abbreviation, color, league')
+        .eq('league', league)
+        .order('name');
+      if (refreshedTeams) setAvailableTeams(refreshedTeams);
+
+      toast.success(`Added ${newCodes.length} teams from events`);
+    } catch (error: any) {
+      console.error('Error syncing from events:', error);
+      toast.error(error.message || 'Failed to sync from events');
+    }
+    setSyncingFromEvents(false);
+  }
+
+  // Manually add a team by code
+  async function addManualTeam() {
+    if (!user || !manualTeamCode.trim()) return;
+    const code = manualTeamCode.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+    // Check if already in roster
+    if (roster.some(r => r.team_code === code)) {
+      toast.info('Team is already in roster');
+      return;
+    }
+
+    // Upsert into teams table
+    const name = manualTeamCode.trim();
+    await supabase.from('teams').upsert([{
+      code,
+      name,
+      abbreviation: code,
+      league: league,
+    }], { onConflict: 'code', ignoreDuplicates: true });
+
+    // Add to roster
+    const { data, error } = await supabase
+      .from('competition_rosters')
+      .insert({
+        competition_key: competitionKey,
+        season,
+        team_code: code,
+        added_by: user.id,
+      })
+      .select('id, team_code, seed, is_eliminated, eliminated_at')
+      .single();
+
+    if (error) {
+      console.error('Error adding manual team:', error);
+      toast.error('Failed to add team');
+    } else {
+      setRoster([...roster, data]);
+      setManualTeamCode('');
+      // Refresh available teams
+      const { data: refreshedTeams } = await supabase
+        .from('teams')
+        .select('code, name, abbreviation, color, league')
+        .eq('league', league)
+        .order('name');
+      if (refreshedTeams) setAvailableTeams(refreshedTeams);
+      toast.success(`Added ${code} to roster`);
+    }
+  }
+
   // Get the merged value (pending change or current)
   function getValue<K extends keyof RosterEntry>(entry: RosterEntry, key: K): RosterEntry[K] {
     const pending = pendingChanges.get(entry.id);
@@ -265,6 +388,10 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={syncFromEvents} disabled={syncingFromEvents}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncingFromEvents ? 'animate-spin' : ''}`} />
+              Sync from Events
+            </Button>
             {teamsNotInRoster.length > 0 && (
               <Button variant="outline" size="sm" onClick={addAllTeams}>
                 <Upload className="w-4 h-4 mr-2" />
@@ -389,6 +516,27 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
             </div>
           </div>
         )}
+
+        {/* Manual Team Code Input */}
+        <div className="pt-4 border-t border-border">
+          <p className="text-sm font-medium mb-3">Add Team by Code</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="e.g. Tennessee Volunteers"
+              value={manualTeamCode}
+              onChange={(e) => setManualTeamCode(e.target.value)}
+              className="max-w-xs"
+              onKeyDown={(e) => e.key === 'Enter' && addManualTeam()}
+            />
+            <Button variant="outline" size="sm" onClick={addManualTeam} disabled={!manualTeamCode.trim()}>
+              <Plus className="w-4 h-4 mr-2" />
+              Add
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Name will be converted to UPPER_SNAKE_CASE team code automatically.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );
