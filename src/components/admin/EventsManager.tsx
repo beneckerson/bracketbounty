@@ -12,7 +12,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -159,9 +160,24 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [homeSearch, setHomeSearch] = useState('');
   const [awaySearch, setAwaySearch] = useState('');
 
-  // Fetch roster teams when create dialog opens
+  // Edit event dialog state
+  const [editEvent, setEditEvent] = useState<Event | null>(null);
+  const [editHomeTeam, setEditHomeTeam] = useState('');
+  const [editAwayTeam, setEditAwayTeam] = useState('');
+  const [editRoundKey, setEditRoundKey] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editHomeOpen, setEditHomeOpen] = useState(false);
+  const [editAwayOpen, setEditAwayOpen] = useState(false);
+  const [editHomeSearch, setEditHomeSearch] = useState('');
+  const [editAwaySearch, setEditAwaySearch] = useState('');
+
+  // Delete confirmation state
+  const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  // Fetch roster teams when create or edit dialog opens
   useEffect(() => {
-    if (!showCreateDialog) return;
+    if (!showCreateDialog && !editEvent) return;
     (async () => {
       const { data: season } = await supabase
         .from('competition_seasons')
@@ -183,7 +199,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
         .in('code', codes);
       setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
     })();
-  }, [showCreateDialog, competitionKey]);
+  }, [showCreateDialog, editEvent, competitionKey]);
 
   const rounds = getRoundsForCompetition(competitionKey);
 
@@ -421,7 +437,90 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setCreating(false);
   }
 
-  // Get first four events for feeds-into dropdown
+  function openEditDialog(event: Event) {
+    setEditEvent(event);
+    // Try to find the team name from roster, fall back to code
+    const homeName = rosterTeams.find(t => t.code === event.home_team)?.name || event.home_team;
+    const awayName = rosterTeams.find(t => t.code === event.away_team)?.name || event.away_team;
+    setEditHomeTeam(homeName);
+    setEditAwayTeam(awayName);
+    setEditRoundKey(event.round_key);
+    setEditStartTime(event.start_time ? new Date(event.start_time).toISOString().slice(0, 16) : '');
+  }
+
+  async function handleEditSave() {
+    if (!editEvent || !editHomeTeam.trim() || !editAwayTeam.trim()) return;
+    const round = rounds.find(r => r.key === editRoundKey);
+    if (!round) return;
+
+    setEditSaving(true);
+    try {
+      const homeCode = editHomeTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const awayCode = editAwayTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+      const { error } = await supabase
+        .from('events')
+        .update({
+          home_team: homeCode,
+          away_team: awayCode,
+          round_key: editRoundKey,
+          round_order: round.order,
+          start_time: editStartTime || null,
+        })
+        .eq('id', editEvent.id);
+
+      if (error) throw error;
+
+      // Upsert teams
+      await supabase.from('teams').upsert([
+        { code: homeCode, name: editHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
+        { code: awayCode, name: editAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+      ], { onConflict: 'code', ignoreDuplicates: true });
+
+      toast.success(`Updated event: ${awayCode} @ ${homeCode}`);
+      setEditEvent(null);
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error updating event:', error);
+      toast.error(error.message || 'Failed to update event');
+    }
+    setEditSaving(false);
+  }
+
+  async function handleDeleteEvent() {
+    if (!deleteEvent) return;
+    setDeleting(true);
+    try {
+      // Check if any pool_matchups reference this event
+      const { count } = await supabase
+        .from('pool_matchups')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', deleteEvent.id);
+
+      if (count && count > 0) {
+        toast.error('Cannot delete: event is linked to pool matchups');
+        setDeleteEvent(null);
+        setDeleting(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', deleteEvent.id);
+
+      if (error) throw error;
+
+      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}`);
+      setDeleteEvent(null);
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      toast.error(error.message || 'Failed to delete event');
+    }
+    setDeleting(false);
+  }
+
   const firstFourEvents = events.filter(e => e.round_key === 'first_four');
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
@@ -608,6 +707,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                           <TableHead>Start Time</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Round</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -619,6 +719,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                             <TableRow key={event.id} className={hasChange ? 'bg-primary/5' : ''}>
                               <TableCell className="font-medium">
                                 {event.away_team} @ {event.home_team}
+                                {event.external_event_id && (
+                                  <span className="ml-1 text-xs text-muted-foreground" title="API-imported event">(API)</span>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {event.start_time ? (
@@ -653,6 +756,18 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                     ))}
                                   </SelectContent>
                                 </Select>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <div className="flex gap-1 justify-end">
+                                  {event.status === 'scheduled' && (
+                                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(event)} title="Edit event">
+                                      <Pencil className="h-3.5 w-3.5" />
+                                    </Button>
+                                  )}
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteEvent(event)} title="Delete event">
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -937,6 +1052,163 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Event Dialog */}
+      <Dialog open={!!editEvent} onOpenChange={(open) => !open && setEditEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Update event details.
+              {editEvent?.external_event_id && (
+                <span className="block mt-1 text-amber-500 text-xs font-medium">
+                  ⚠ This is an API-imported event. Manual edits may be overwritten on next sync.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Home Team</Label>
+                <Popover open={editHomeOpen} onOpenChange={setEditHomeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={editHomeOpen} className="w-full justify-between font-normal">
+                      {editHomeTeam || 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={editHomeSearch} onValueChange={setEditHomeSearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setEditHomeTeam(editHomeSearch); setEditHomeOpen(false); setEditHomeSearch(''); }}
+                          >
+                            Use "{editHomeSearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setEditHomeTeam(t.name); setEditHomeOpen(false); setEditHomeSearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", editHomeTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Away Team</Label>
+                <Popover open={editAwayOpen} onOpenChange={setEditAwayOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={editAwayOpen} className="w-full justify-between font-normal">
+                      {editAwayTeam || 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={editAwaySearch} onValueChange={setEditAwaySearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setEditAwayTeam(editAwaySearch); setEditAwayOpen(false); setEditAwaySearch(''); }}
+                          >
+                            Use "{editAwaySearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setEditAwayTeam(t.name); setEditAwayOpen(false); setEditAwaySearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", editAwayTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Round</Label>
+                <Select value={editRoundKey} onValueChange={setEditRoundKey}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rounds.map(r => (
+                      <SelectItem key={r.key} value={r.key}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Start Time (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteEvent} onOpenChange={(open) => !open && setDeleteEvent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">
+                {deleteEvent?.away_team} @ {deleteEvent?.home_team}
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEvent} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
