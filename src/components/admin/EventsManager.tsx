@@ -741,6 +741,99 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Create Event Dialog */}
+      <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Event Manually</DialogTitle>
+            <DialogDescription>
+              Add a game that doesn't exist in the Odds API yet (e.g., R64 games with TBD First Four opponents).
+              When the API starts listing this game, it will be automatically adopted — no duplicates.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="create-home">Home Team (code or name)</Label>
+                <Input
+                  id="create-home"
+                  value={createHomeTeam}
+                  onChange={(e) => setCreateHomeTeam(e.target.value)}
+                  placeholder="e.g. Tennessee Volunteers"
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-away">Away Team (code or name)</Label>
+                <Input
+                  id="create-away"
+                  value={createAwayTeam}
+                  onChange={(e) => setCreateAwayTeam(e.target.value)}
+                  placeholder="e.g. First Four Winner"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Round</Label>
+                <Select value={createRoundKey} onValueChange={setCreateRoundKey}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rounds.map(r => (
+                      <SelectItem key={r.key} value={r.key}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="create-time">Start Time (optional)</Label>
+                <Input
+                  id="create-time"
+                  type="datetime-local"
+                  value={createStartTime}
+                  onChange={(e) => setCreateStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {firstFourEvents.length > 0 && (
+              <div>
+                <Label>Linked First Four Game (optional)</Label>
+                <Select value={createFeedsInto || 'none'} onValueChange={v => setCreateFeedsInto(v === 'none' ? '' : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="No play-in link" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No play-in link</SelectItem>
+                    {firstFourEvents.map(ff => (
+                      <SelectItem key={ff.id} value={ff.id}>
+                        {ff.away_team} / {ff.home_team}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Links a First Four game so its winner feeds into this event.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowCreateDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleCreateEvent} disabled={creating}>
+              {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Create Event
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
