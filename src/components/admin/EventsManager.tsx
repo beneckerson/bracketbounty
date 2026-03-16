@@ -428,6 +428,14 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setShowCreateDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Event
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSyncOdds}
                 disabled={syncing}
               >
