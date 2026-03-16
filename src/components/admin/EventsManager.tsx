@@ -175,9 +175,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   // Delete confirmation state
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
-  // Fetch roster teams when create dialog opens
+  // Fetch roster teams when create or edit dialog opens
   useEffect(() => {
-    if (!showCreateDialog) return;
+    if (!showCreateDialog && !editEvent) return;
     (async () => {
       const { data: season } = await supabase
         .from('competition_seasons')
@@ -197,6 +197,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
         .from('teams')
         .select('code, name')
         .in('code', codes);
+      setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
+    })();
+  }, [showCreateDialog, editEvent, competitionKey]);
       setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
     })();
   }, [showCreateDialog, competitionKey]);
