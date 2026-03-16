@@ -1,4 +1,16 @@
+## ✅ Completed: Fix Missing Teams + Manual Events (Duplicate-Safe)
 
+### What was implemented
+
+1. **`sync-odds` duplicate-safe matching**: Before upserting, checks for existing events with `external_event_id IS NULL` and matching team codes (both orientations). If found, adopts the manual event by setting its `external_event_id`. No duplicates when API starts listing those games Wednesday.
+
+2. **Manual event creation dialog in EventsManager**: "Create Event" button opens a dialog with home/away team inputs, round selector, start time, and optional First Four linkage via `feeds_into_event_id`.
+
+3. **RosterEditor improvements**:
+   - "Sync from Events" button extracts unique team codes from all imported events and adds missing ones to both `teams` table and `competition_rosters`
+   - Manual team code text input to add teams not yet in any event (e.g., Tennessee)
+
+4. **NCAAGameSelector abbreviation fix**: Uses initials + mascot (e.g., "BC Eagles") instead of just the last word to prevent duplicate abbreviations.
 
 ## Revised NCAA Tournament Plan — 64 Teams, Play-in Pairs
 
@@ -127,4 +139,3 @@ Alternatively (simpler approach): the admin selects 64 teams in the roster — t
 5. `sync-odds` updates
 6. Bracket display for play-in pairs
 7. First Four resolution logic in `resolve-event`
-
