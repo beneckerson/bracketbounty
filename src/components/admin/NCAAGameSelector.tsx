@@ -169,8 +169,8 @@ export function NCAAGameSelector() {
 
         // Upsert teams
         const teams = [
-          { code: homeCode, name: game.event.home_team, abbreviation: game.event.home_team.split(' ').pop() || homeCode, league: 'NCAAB' },
-          { code: awayCode, name: game.event.away_team, abbreviation: game.event.away_team.split(' ').pop() || awayCode, league: 'NCAAB' },
+          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB' },
+          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB' },
         ];
         await supabase.from('teams').upsert(teams, { onConflict: 'code', ignoreDuplicates: true });
       }
