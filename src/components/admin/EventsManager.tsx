@@ -437,7 +437,90 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setCreating(false);
   }
 
-  // Get first four events for feeds-into dropdown
+  function openEditDialog(event: Event) {
+    setEditEvent(event);
+    // Try to find the team name from roster, fall back to code
+    const homeName = rosterTeams.find(t => t.code === event.home_team)?.name || event.home_team;
+    const awayName = rosterTeams.find(t => t.code === event.away_team)?.name || event.away_team;
+    setEditHomeTeam(homeName);
+    setEditAwayTeam(awayName);
+    setEditRoundKey(event.round_key);
+    setEditStartTime(event.start_time ? new Date(event.start_time).toISOString().slice(0, 16) : '');
+  }
+
+  async function handleEditSave() {
+    if (!editEvent || !editHomeTeam.trim() || !editAwayTeam.trim()) return;
+    const round = rounds.find(r => r.key === editRoundKey);
+    if (!round) return;
+
+    setEditSaving(true);
+    try {
+      const homeCode = editHomeTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const awayCode = editAwayTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+      const { error } = await supabase
+        .from('events')
+        .update({
+          home_team: homeCode,
+          away_team: awayCode,
+          round_key: editRoundKey,
+          round_order: round.order,
+          start_time: editStartTime || null,
+        })
+        .eq('id', editEvent.id);
+
+      if (error) throw error;
+
+      // Upsert teams
+      await supabase.from('teams').upsert([
+        { code: homeCode, name: editHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
+        { code: awayCode, name: editAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+      ], { onConflict: 'code', ignoreDuplicates: true });
+
+      toast.success(`Updated event: ${awayCode} @ ${homeCode}`);
+      setEditEvent(null);
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error updating event:', error);
+      toast.error(error.message || 'Failed to update event');
+    }
+    setEditSaving(false);
+  }
+
+  async function handleDeleteEvent() {
+    if (!deleteEvent) return;
+    setDeleting(true);
+    try {
+      // Check if any pool_matchups reference this event
+      const { count } = await supabase
+        .from('pool_matchups')
+        .select('id', { count: 'exact', head: true })
+        .eq('event_id', deleteEvent.id);
+
+      if (count && count > 0) {
+        toast.error('Cannot delete: event is linked to pool matchups');
+        setDeleteEvent(null);
+        setDeleting(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from('events')
+        .delete()
+        .eq('id', deleteEvent.id);
+
+      if (error) throw error;
+
+      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}`);
+      setDeleteEvent(null);
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error deleting event:', error);
+      toast.error(error.message || 'Failed to delete event');
+    }
+    setDeleting(false);
+  }
+
   const firstFourEvents = events.filter(e => e.round_key === 'first_four');
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
