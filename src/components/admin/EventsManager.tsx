@@ -1052,6 +1052,163 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Event Dialog */}
+      <Dialog open={!!editEvent} onOpenChange={(open) => !open && setEditEvent(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Event</DialogTitle>
+            <DialogDescription>
+              Update event details.
+              {editEvent?.external_event_id && (
+                <span className="block mt-1 text-amber-500 text-xs font-medium">
+                  ⚠ This is an API-imported event. Manual edits may be overwritten on next sync.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Home Team</Label>
+                <Popover open={editHomeOpen} onOpenChange={setEditHomeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={editHomeOpen} className="w-full justify-between font-normal">
+                      {editHomeTeam || 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={editHomeSearch} onValueChange={setEditHomeSearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setEditHomeTeam(editHomeSearch); setEditHomeOpen(false); setEditHomeSearch(''); }}
+                          >
+                            Use "{editHomeSearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setEditHomeTeam(t.name); setEditHomeOpen(false); setEditHomeSearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", editHomeTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div>
+                <Label>Away Team</Label>
+                <Popover open={editAwayOpen} onOpenChange={setEditAwayOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={editAwayOpen} className="w-full justify-between font-normal">
+                      {editAwayTeam || 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={editAwaySearch} onValueChange={setEditAwaySearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setEditAwayTeam(editAwaySearch); setEditAwayOpen(false); setEditAwaySearch(''); }}
+                          >
+                            Use "{editAwaySearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setEditAwayTeam(t.name); setEditAwayOpen(false); setEditAwaySearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", editAwayTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Round</Label>
+                <Select value={editRoundKey} onValueChange={setEditRoundKey}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {rounds.map(r => (
+                      <SelectItem key={r.key} value={r.key}>{r.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Start Time (optional)</Label>
+                <Input
+                  type="datetime-local"
+                  value={editStartTime}
+                  onChange={(e) => setEditStartTime(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleEditSave} disabled={editSaving}>
+              {editSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteEvent} onOpenChange={(open) => !open && setDeleteEvent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-foreground">
+                {deleteEvent?.away_team} @ {deleteEvent?.home_team}
+              </span>
+              ? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteEvent} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
