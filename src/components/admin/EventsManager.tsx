@@ -137,6 +137,15 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [commissionerNote, setCommissionerNote] = useState('');
   const [resolving, setResolving] = useState(false);
 
+  // Create event dialog state
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [createHomeTeam, setCreateHomeTeam] = useState('');
+  const [createAwayTeam, setCreateAwayTeam] = useState('');
+  const [createRoundKey, setCreateRoundKey] = useState('round_of_64');
+  const [createStartTime, setCreateStartTime] = useState('');
+  const [createFeedsInto, setCreateFeedsInto] = useState('');
+  const [creating, setCreating] = useState(false);
+
   const rounds = getRoundsForCompetition(competitionKey);
 
   useEffect(() => {

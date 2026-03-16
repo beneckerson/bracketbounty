@@ -295,31 +295,68 @@ serve(async (req) => {
       
       console.log(`Event ${event.home_team} vs ${event.away_team} -> Round: ${roundInfo.round_key} (order: ${roundInfo.round_order})`);
 
-      // Upsert event with detected round
-      const eventData = {
-        external_event_id: event.id,
-        competition_key,
-        round_key: roundInfo.round_key,
-        round_order: roundInfo.round_order,
-        home_team: homeTeamInfo.code,
-        away_team: awayTeamInfo.code,
-        start_time: event.commence_time,
-        status: new Date(event.commence_time) > new Date() ? 'scheduled' : 'live',
-        event_type: (competition_key === 'nfl_playoffs' || competition_key === 'cfp') ? 'game' : 'series',
-      };
+      // === Duplicate-safe matching ===
+      // Before upserting, check if a manually created event (external_event_id IS NULL)
+      // exists with the same teams for this competition. If so, adopt it.
+      let upsertedEvent: any = null;
 
-      const { data: upsertedEvent, error: eventError } = await supabase
+      const { data: manualMatch } = await supabase
         .from('events')
-        .upsert(eventData, { 
-          onConflict: 'external_event_id',
-          ignoreDuplicates: false 
-        })
-        .select()
-        .single();
+        .select('*')
+        .eq('competition_key', competition_key)
+        .is('external_event_id', null)
+        .or(`and(home_team.eq.${homeTeamInfo.code},away_team.eq.${awayTeamInfo.code}),and(home_team.eq.${awayTeamInfo.code},away_team.eq.${homeTeamInfo.code})`)
+        .maybeSingle();
 
-      if (eventError) {
-        console.error('Error upserting event:', eventError);
-        continue;
+      if (manualMatch) {
+        console.log(`Found manual event ${manualMatch.id} matching ${homeTeamInfo.code} vs ${awayTeamInfo.code}, adopting it`);
+        // Adopt the manual event by setting its external_event_id and updating fields
+        const { data: adopted, error: adoptError } = await supabase
+          .from('events')
+          .update({
+            external_event_id: event.id,
+            home_team: homeTeamInfo.code,
+            away_team: awayTeamInfo.code,
+            start_time: event.commence_time,
+            status: new Date(event.commence_time) > new Date() ? 'scheduled' : 'live',
+          })
+          .eq('id', manualMatch.id)
+          .select()
+          .single();
+
+        if (adoptError) {
+          console.error('Error adopting manual event:', adoptError);
+          continue;
+        }
+        upsertedEvent = adopted;
+      } else {
+        // Normal upsert path
+        const eventData = {
+          external_event_id: event.id,
+          competition_key,
+          round_key: roundInfo.round_key,
+          round_order: roundInfo.round_order,
+          home_team: homeTeamInfo.code,
+          away_team: awayTeamInfo.code,
+          start_time: event.commence_time,
+          status: new Date(event.commence_time) > new Date() ? 'scheduled' : 'live',
+          event_type: (competition_key === 'nfl_playoffs' || competition_key === 'cfp') ? 'game' : 'series',
+        };
+
+        const { data: upserted, error: eventError } = await supabase
+          .from('events')
+          .upsert(eventData, { 
+            onConflict: 'external_event_id',
+            ignoreDuplicates: false 
+          })
+          .select()
+          .single();
+
+        if (eventError) {
+          console.error('Error upserting event:', eventError);
+          continue;
+        }
+        upsertedEvent = upserted;
       }
 
       syncedEvents.push({
