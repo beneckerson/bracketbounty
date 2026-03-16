@@ -200,9 +200,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
       setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
     })();
   }, [showCreateDialog, editEvent, competitionKey]);
-      setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
-    })();
-  }, [showCreateDialog, competitionKey]);
 
   const rounds = getRoundsForCompetition(competitionKey);
 
