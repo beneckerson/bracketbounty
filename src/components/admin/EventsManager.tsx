@@ -795,22 +795,86 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="create-home">Home Team (code or name)</Label>
-                <Input
-                  id="create-home"
-                  value={createHomeTeam}
-                  onChange={(e) => setCreateHomeTeam(e.target.value)}
-                  placeholder="e.g. Tennessee Volunteers"
-                />
+                <Label>Home Team</Label>
+                <Popover open={homeOpen} onOpenChange={setHomeOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={homeOpen} className="w-full justify-between font-normal">
+                      {createHomeTeam
+                        ? rosterTeams.find(t => t.name === createHomeTeam)?.name || createHomeTeam
+                        : 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={homeSearch} onValueChange={setHomeSearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setCreateHomeTeam(homeSearch); setHomeOpen(false); setHomeSearch(''); }}
+                          >
+                            Use "{homeSearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setCreateHomeTeam(t.name); setHomeOpen(false); setHomeSearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", createHomeTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
-                <Label htmlFor="create-away">Away Team (code or name)</Label>
-                <Input
-                  id="create-away"
-                  value={createAwayTeam}
-                  onChange={(e) => setCreateAwayTeam(e.target.value)}
-                  placeholder="e.g. First Four Winner"
-                />
+                <Label>Away Team</Label>
+                <Popover open={awayOpen} onOpenChange={setAwayOpen}>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={awayOpen} className="w-full justify-between font-normal">
+                      {createAwayTeam
+                        ? rosterTeams.find(t => t.name === createAwayTeam)?.name || createAwayTeam
+                        : 'Select or type team...'}
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[250px] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Search teams..." value={awaySearch} onValueChange={setAwaySearch} />
+                      <CommandList>
+                        <CommandEmpty>
+                          <button
+                            type="button"
+                            className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
+                            onClick={() => { setCreateAwayTeam(awaySearch); setAwayOpen(false); setAwaySearch(''); }}
+                          >
+                            Use "{awaySearch}"
+                          </button>
+                        </CommandEmpty>
+                        <CommandGroup>
+                          {rosterTeams.map(t => (
+                            <CommandItem
+                              key={t.code}
+                              value={t.name}
+                              onSelect={() => { setCreateAwayTeam(t.name); setAwayOpen(false); setAwaySearch(''); }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4", createAwayTeam === t.name ? "opacity-100" : "opacity-0")} />
+                              {t.name}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
             </div>
 
