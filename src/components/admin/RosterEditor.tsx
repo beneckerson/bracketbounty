@@ -388,6 +388,10 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
             </CardDescription>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={syncFromEvents} disabled={syncingFromEvents}>
+              <RefreshCw className={`w-4 h-4 mr-2 ${syncingFromEvents ? 'animate-spin' : ''}`} />
+              Sync from Events
+            </Button>
             {teamsNotInRoster.length > 0 && (
               <Button variant="outline" size="sm" onClick={addAllTeams}>
                 <Upload className="w-4 h-4 mr-2" />
