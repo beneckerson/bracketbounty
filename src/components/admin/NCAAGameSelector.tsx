@@ -115,6 +115,16 @@ export function NCAAGameSelector() {
     return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
   }
 
+  function toAbbreviation(name: string): string {
+    // Use initials of multi-word names to avoid duplicates like "Eagles"
+    const words = name.split(/\s+/);
+    if (words.length <= 2) return name;
+    // For names like "Boston College Eagles", use "BC Eagles"
+    const mascot = words[words.length - 1];
+    const initials = words.slice(0, -1).map(w => w[0]).join('');
+    return `${initials} ${mascot}`;
+  }
+
   async function handleSave() {
     const games = Object.values(selectedGames);
     if (games.length === 0) {
