@@ -153,6 +153,37 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [createStartTime, setCreateStartTime] = useState('');
   const [createFeedsInto, setCreateFeedsInto] = useState('');
   const [creating, setCreating] = useState(false);
+  const [homeOpen, setHomeOpen] = useState(false);
+  const [awayOpen, setAwayOpen] = useState(false);
+  const [rosterTeams, setRosterTeams] = useState<RosterTeam[]>([]);
+  const [homeSearch, setHomeSearch] = useState('');
+  const [awaySearch, setAwaySearch] = useState('');
+
+  // Fetch roster teams when create dialog opens
+  useEffect(() => {
+    if (!showCreateDialog) return;
+    (async () => {
+      const { data: season } = await supabase
+        .from('competition_seasons')
+        .select('season')
+        .eq('competition_key', competitionKey)
+        .eq('is_active', true)
+        .maybeSingle();
+      if (!season) return;
+      const { data: roster } = await supabase
+        .from('competition_rosters')
+        .select('team_code')
+        .eq('competition_key', competitionKey)
+        .eq('season', season.season);
+      if (!roster?.length) return;
+      const codes = roster.map(r => r.team_code);
+      const { data: teams } = await supabase
+        .from('teams')
+        .select('code, name')
+        .in('code', codes);
+      setRosterTeams((teams || []).sort((a, b) => a.name.localeCompare(b.name)));
+    })();
+  }, [showCreateDialog, competitionKey]);
 
   const rounds = getRoundsForCompetition(competitionKey);
 
