@@ -9,7 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { Plus, Trash2, Check, X, Upload, Save, Users } from 'lucide-react';
+import { Plus, Trash2, Check, X, Upload, Save, Users, RefreshCw } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 
 interface RosterEntry {
