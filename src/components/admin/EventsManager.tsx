@@ -160,6 +160,21 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [homeSearch, setHomeSearch] = useState('');
   const [awaySearch, setAwaySearch] = useState('');
 
+  // Edit event dialog state
+  const [editEvent, setEditEvent] = useState<Event | null>(null);
+  const [editHomeTeam, setEditHomeTeam] = useState('');
+  const [editAwayTeam, setEditAwayTeam] = useState('');
+  const [editRoundKey, setEditRoundKey] = useState('');
+  const [editStartTime, setEditStartTime] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
+  const [editHomeOpen, setEditHomeOpen] = useState(false);
+  const [editAwayOpen, setEditAwayOpen] = useState(false);
+  const [editHomeSearch, setEditHomeSearch] = useState('');
+  const [editAwaySearch, setEditAwaySearch] = useState('');
+
+  // Delete confirmation state
+  const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // Fetch roster teams when create dialog opens
   useEffect(() => {
     if (!showCreateDialog) return;
