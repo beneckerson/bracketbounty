@@ -321,6 +321,70 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setResolving(false);
   }
 
+  async function handleCreateEvent() {
+    if (!createHomeTeam.trim() || !createAwayTeam.trim()) {
+      toast.error('Please enter both team codes');
+      return;
+    }
+
+    const round = rounds.find(r => r.key === createRoundKey);
+    if (!round) return;
+
+    setCreating(true);
+    try {
+      const homeCode = createHomeTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+      const awayCode = createAwayTeam.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+      // Insert event with NO external_event_id (manual marker)
+      const { data: newEvent, error } = await supabase
+        .from('events')
+        .insert({
+          competition_key: competitionKey,
+          round_key: createRoundKey,
+          round_order: round.order,
+          home_team: homeCode,
+          away_team: awayCode,
+          start_time: createStartTime || null,
+          event_type: 'game' as const,
+          status: 'scheduled' as const,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If feeds_into is set, link the First Four event to this new R64 event
+      if (createFeedsInto) {
+        await supabase
+          .from('events')
+          .update({ feeds_into_event_id: newEvent.id })
+          .eq('id', createFeedsInto);
+      }
+
+      // Also upsert both teams into the teams table
+      await supabase.from('teams').upsert([
+        { code: homeCode, name: createHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
+        { code: awayCode, name: createAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+      ], { onConflict: 'code', ignoreDuplicates: true });
+
+      toast.success(`Created event: ${awayCode} @ ${homeCode}`);
+      setShowCreateDialog(false);
+      setCreateHomeTeam('');
+      setCreateAwayTeam('');
+      setCreateRoundKey('round_of_64');
+      setCreateStartTime('');
+      setCreateFeedsInto('');
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      toast.error(error.message || 'Failed to create event');
+    }
+    setCreating(false);
+  }
+
+  // Get first four events for feeds-into dropdown
+  const firstFourEvents = events.filter(e => e.round_key === 'first_four');
+
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   // Separate events into pending resolution and resolved
