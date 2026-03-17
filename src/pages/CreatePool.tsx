@@ -234,11 +234,11 @@ export default function CreatePool() {
 
   // Auto-sync teamsPerPlayer when the math divides evenly
   useEffect(() => {
-    if (teamCount > 0 && playerCount > 0 && teamCount % playerCount === 0) {
-      const computed = Math.floor(teamCount / playerCount);
+    if (effectiveTeamCount > 0 && playerCount > 0 && effectiveTeamCount % playerCount === 0) {
+      const computed = Math.floor(effectiveTeamCount / playerCount);
       form.setValue('teamsPerPlayer', computed);
     }
-  }, [teamCount, playerCount, form]);
+  }, [effectiveTeamCount, playerCount, form]);
 
   // Fetch matchups and teams when entering step 4 (Review)
   useEffect(() => {
