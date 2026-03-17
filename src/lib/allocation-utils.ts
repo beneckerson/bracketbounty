@@ -16,8 +16,9 @@ export interface AllocationSuggestion {
 
 /**
  * Calculate if teams divide evenly among players
+ * @param firstFourPairs - number of First Four play-in pairs (each pair counts as 1 slot instead of 2)
  */
-export function calculateAllocation(teamCount: number, playerCount: number): AllocationResult {
+export function calculateAllocation(teamCount: number, playerCount: number, firstFourPairs: number = 0): AllocationResult {
   if (playerCount <= 0 || teamCount <= 0) {
     return { isValid: false, teamsPerPlayer: 0, remainder: 0, excludedCount: 0, suggestions: [] };
   }
