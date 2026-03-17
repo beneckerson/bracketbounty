@@ -171,17 +171,16 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (existing) {
-        // Update existing team
         await supabase
           .from('teams')
           .update({
             name: team.name,
             abbreviation: team.abbreviation,
+            color: team.color,
           })
           .eq('code', team.code);
         updatedCount++;
       } else {
-        // Insert new team
         await supabase
           .from('teams')
           .insert({
@@ -189,7 +188,7 @@ Deno.serve(async (req) => {
             name: team.name,
             abbreviation: team.abbreviation,
             league: league,
-            color: 'team-gray',
+            color: team.color,
           });
         insertedCount++;
       }

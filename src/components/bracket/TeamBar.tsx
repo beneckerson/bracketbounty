@@ -7,20 +7,37 @@ interface TeamBarProps {
 }
 
 const colorMap: Record<string, string> = {
-  'team-crimson': 'bg-team-crimson',   // IND, BAMA
-  'team-scarlet': 'bg-team-scarlet',   // OSU
-  'team-red': 'bg-team-red',           // UGA, TTU
-  'team-green': 'bg-team-green',       // ORE
-  'team-orange': 'bg-team-orange',     // MIAMI
-  'team-navy': 'bg-team-navy',         // MISS
+  'team-crimson': 'bg-team-crimson',
+  'team-scarlet': 'bg-team-scarlet',
+  'team-red': 'bg-team-red',
+  'team-green': 'bg-team-green',
+  'team-orange': 'bg-team-orange',
+  'team-navy': 'bg-team-navy',
   'team-blue': 'bg-team-blue',
   'team-purple': 'bg-team-purple',
   'team-gold': 'bg-team-gold',
   'team-teal': 'bg-team-teal',
 };
 
+// Hash-based color for teams without explicit color mapping
+const HASH_COLORS = [
+  'bg-team-crimson', 'bg-team-scarlet', 'bg-team-red', 'bg-team-green',
+  'bg-team-orange', 'bg-team-blue', 'bg-team-purple', 'bg-team-gold', 'bg-team-teal',
+];
+
+function hashColor(code: string): string {
+  let hash = 0;
+  for (let i = 0; i < code.length; i++) {
+    hash = ((hash << 5) - hash) + code.charCodeAt(i);
+    hash |= 0;
+  }
+  return HASH_COLORS[Math.abs(hash) % HASH_COLORS.length];
+}
+
 export function TeamBar({ team, className }: TeamBarProps) {
-  const bgColor = colorMap[team.color] || 'bg-team-navy';
+  const explicitColor = colorMap[team.color];
+  // Use explicit color if set, otherwise hash-based color (avoids all-navy problem)
+  const bgColor = explicitColor || (team.color === 'team-gray' ? hashColor(team.code) : explicitColor || 'bg-team-navy');
   
   return (
     <div className={cn('team-bar', bgColor, className)}>

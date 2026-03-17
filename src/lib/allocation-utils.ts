@@ -87,7 +87,7 @@ export function findValidConfigurations(teamCount: number, currentPlayerCount: n
 /**
  * Get divisibility status message
  */
-export function getAllocationStatus(teamCount: number, playerCount: number): {
+export function getAllocationStatus(teamCount: number, playerCount: number, firstFourPairs: number = 0): {
   status: 'valid' | 'warning' | 'error';
   message: string;
 } {
@@ -99,17 +99,18 @@ export function getAllocationStatus(teamCount: number, playerCount: number): {
     return { status: 'error', message: 'Select teams first' };
   }
 
-  const { isValid, teamsPerPlayer, remainder } = calculateAllocation(teamCount, playerCount);
+  const effectiveTeamCount = teamCount - firstFourPairs;
+  const { isValid, teamsPerPlayer, remainder } = calculateAllocation(teamCount, playerCount, firstFourPairs);
 
   if (isValid) {
     return {
       status: 'valid',
-      message: `${teamCount} teams ÷ ${playerCount} players = ${teamsPerPlayer} team${teamsPerPlayer > 1 ? 's' : ''} each`,
+      message: `${effectiveTeamCount} slots ÷ ${playerCount} players = ${teamsPerPlayer} team${teamsPerPlayer > 1 ? 's' : ''} each${firstFourPairs > 0 ? ` (${firstFourPairs} play-in pairs share a slot)` : ''}`,
     };
   }
 
   return {
     status: 'warning',
-    message: `${teamCount} teams ÷ ${playerCount} players = ${teamsPerPlayer} each with ${remainder} left over`,
+    message: `${effectiveTeamCount} slots ÷ ${playerCount} players = ${teamsPerPlayer} each with ${remainder} left over`,
   };
 }

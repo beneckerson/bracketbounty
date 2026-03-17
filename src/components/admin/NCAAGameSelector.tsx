@@ -179,10 +179,10 @@ export function NCAAGameSelector() {
         savedEvents.push(upserted);
         savedCount++;
 
-        // Upsert teams
+        // Upsert teams with hash-based colors
         const teams = [
-          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB' },
-          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB' },
+          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB', color: hashToColor(homeCode) },
+          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB', color: hashToColor(awayCode) },
         ];
         await supabase.from('teams').upsert(teams, { onConflict: 'code', ignoreDuplicates: true });
       }

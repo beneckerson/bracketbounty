@@ -45,9 +45,14 @@ export function AllocationCalculator({
       {allocation.isValid && (
         <div className="flex items-center gap-2 p-3 rounded-lg border border-green-200 bg-green-50 text-green-700 dark:border-green-900 dark:bg-green-950/30 dark:text-green-400">
           <CheckCircle2 className="w-5 h-5 flex-shrink-0" />
-          <span className="text-sm font-medium">
-            Perfect match — each player gets {allocation.teamsPerPlayer} team{allocation.teamsPerPlayer !== 1 ? 's' : ''}
-          </span>
+          <div className="text-sm font-medium">
+            <p>Perfect match — each player gets {allocation.teamsPerPlayer} team{allocation.teamsPerPlayer !== 1 ? 's' : ''}</p>
+            {firstFourPairs > 0 && (
+              <p className="font-normal text-green-600 dark:text-green-500 mt-1">
+                {firstFourPairs} First Four play-in pair{firstFourPairs !== 1 ? 's' : ''} will share an owner slot (both teams go to the same player).
+              </p>
+            )}
+          </div>
         </div>
       )}
 
