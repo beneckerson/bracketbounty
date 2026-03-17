@@ -36,8 +36,8 @@ function hashColor(code: string): string {
 
 export function TeamBar({ team, className }: TeamBarProps) {
   const explicitColor = colorMap[team.color];
-  // Use explicit color if set, otherwise hash-based color (avoids all-navy problem)
-  const bgColor = explicitColor || (team.color === 'team-gray' ? hashColor(team.code) : explicitColor || 'bg-team-navy');
+  // Use explicit color if mapped, otherwise always hash-based fallback
+  const bgColor = explicitColor || hashColor(team.code);
   
   return (
     <div className={cn('team-bar', bgColor, className)}>

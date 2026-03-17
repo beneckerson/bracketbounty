@@ -131,10 +131,10 @@ export function NCAAGameSelector() {
 
   function toAbbreviation(name: string): string {
     const words = name.split(/\s+/);
-    if (words.length <= 2) return name;
-    const mascot = words[words.length - 1];
-    const initials = words.slice(0, -1).map(w => w[0]).join('');
-    return `${initials} ${mascot}`;
+    if (words.length <= 1) return name;
+    // Drop the last word (mascot) and keep the school name
+    // "BYU Cougars" → "BYU", "Boston College Eagles" → "Boston College"
+    return words.slice(0, -1).join(' ');
   }
 
   async function handleSave() {
