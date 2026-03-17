@@ -430,16 +430,13 @@ export default function Pool() {
           // show "Play-in Winner (Team A / Team B)" as the team name
           function getPlayinTeamName(teamCode: string, teamData: TeamData | undefined): { name: string; abbreviation: string } {
             if (feederEvent && feederEvent.status !== 'final') {
-              // Check if this team code matches either feeder team
-              const feederTeamCodes = [feederEvent.home_team, feederEvent.away_team];
-              if (feederTeamCodes.includes(teamCode) || !teamData) {
-                const hName = feederHomeTeam?.abbreviation || feederEvent.home_team;
-                const aName = feederAwayTeam?.abbreviation || feederEvent.away_team;
-                return {
-                  name: `Play-in Winner (${feederHomeTeam?.name || feederEvent.home_team} / ${feederAwayTeam?.name || feederEvent.away_team})`,
-                  abbreviation: `${hName}/${aName}`,
-                };
-              }
+              // If a feeder event exists and isn't resolved, always show play-in label
+              const hName = feederHomeTeam?.abbreviation || feederEvent.home_team;
+              const aName = feederAwayTeam?.abbreviation || feederEvent.away_team;
+              return {
+                name: `Play-in Winner (${feederHomeTeam?.name || feederEvent.home_team} / ${feederAwayTeam?.name || feederEvent.away_team})`,
+                abbreviation: `${hName}/${aName}`,
+              };
             }
             return {
               name: teamData?.name || teamCode,

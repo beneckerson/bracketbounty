@@ -38,15 +38,10 @@ function parseTeamName(fullName: string): { name: string; abbreviation: string; 
   let abbreviation = fullName;
   if (parts.length === 1) {
     abbreviation = fullName.substring(0, 4).toUpperCase();
-  } else if (parts.length === 2) {
-    // "Duke Blue" → "Duke Blue" (keep as-is for short names)
-    abbreviation = fullName;
-  } else if (parts.length >= 3) {
-    // "Boston College Eagles" → "BC Eagles"
-    const mascot = parts[parts.length - 1];
-    const schoolParts = parts.slice(0, -1);
-    const initials = schoolParts.map(w => w[0]).join('');
-    abbreviation = `${initials} ${mascot}`;
+  } else if (parts.length >= 2) {
+    // Drop the last word (mascot) and keep the school name
+    // "BYU Cougars" → "BYU", "Boston College Eagles" → "Boston College"
+    abbreviation = parts.slice(0, -1).join(' ');
   }
   
   // Code is uppercase, no spaces
