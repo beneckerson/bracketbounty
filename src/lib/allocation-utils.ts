@@ -23,8 +23,10 @@ export function calculateAllocation(teamCount: number, playerCount: number, firs
     return { isValid: false, teamsPerPlayer: 0, remainder: 0, excludedCount: 0, suggestions: [] };
   }
 
-  const teamsPerPlayer = Math.floor(teamCount / playerCount);
-  const remainder = teamCount % playerCount;
+  // For March Madness: each First Four pair counts as 1 slot (not 2 teams)
+  const effectiveTeamCount = teamCount - firstFourPairs;
+  const teamsPerPlayer = Math.floor(effectiveTeamCount / playerCount);
+  const remainder = effectiveTeamCount % playerCount;
 
   if (remainder === 0 && teamsPerPlayer >= 1) {
     return { isValid: true, teamsPerPlayer, remainder, excludedCount: 0, suggestions: [] };
