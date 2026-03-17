@@ -516,6 +516,7 @@ export default function CreatePool() {
                         teamCount={teamCount}
                         playerCount={playerCount}
                         onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
+                        firstFourPairs={firstFourPairCount}
                       />
                     )}
 
