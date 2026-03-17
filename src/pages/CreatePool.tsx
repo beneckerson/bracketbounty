@@ -485,10 +485,11 @@ export default function CreatePool() {
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex items-center justify-between">
-                            <FormLabel>Number of Players</FormLabel>
-                            {teamCount > 0 && playerCount > 0 && (
+                             <FormLabel>Number of Players</FormLabel>
+                            {effectiveTeamCount > 0 && playerCount > 0 && (
                               <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
-                                {Math.floor(teamCount / playerCount)} team{Math.floor(teamCount / playerCount) !== 1 ? 's' : ''} each
+                                {Math.floor(effectiveTeamCount / playerCount)} team{Math.floor(effectiveTeamCount / playerCount) !== 1 ? 's' : ''} each
+                                {firstFourPairCount > 0 && ` (${effectiveTeamCount} slots)`}
                               </span>
                             )}
                           </div>
@@ -502,7 +503,7 @@ export default function CreatePool() {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            {teamCount} teams selected
+                            {teamCount} teams selected{firstFourPairCount > 0 ? ` (${firstFourPairCount} First Four pairs = ${effectiveTeamCount} ownership slots)` : ''}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
