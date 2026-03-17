@@ -18,14 +18,16 @@ export function AllocationCalculator({
 }: AllocationCalculatorProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
+  const effectiveTeamCount = teamCount - firstFourPairs;
+
   const allocation = useMemo(
-    () => calculateAllocation(teamCount, playerCount),
-    [teamCount, playerCount]
+    () => calculateAllocation(teamCount, playerCount, firstFourPairs),
+    [teamCount, playerCount, firstFourPairs]
   );
 
   const validDivisors = useMemo(
-    () => getValidDivisors(teamCount),
-    [teamCount]
+    () => getValidDivisors(effectiveTeamCount),
+    [effectiveTeamCount]
   );
 
   // Reset acknowledged state when player count changes
