@@ -605,12 +605,13 @@ export default function CreatePool() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">👥</span>
                         <span className="text-sm font-medium">
-                          {values.maxPlayers} players • {Math.floor(values.selectedTeams.length / values.maxPlayers)} team{Math.floor(values.selectedTeams.length / values.maxPlayers) !== 1 ? 's' : ''} each
+                          {values.maxPlayers} players • {Math.floor(effectiveTeamCount / values.maxPlayers)} team{Math.floor(effectiveTeamCount / values.maxPlayers) !== 1 ? 's' : ''} each
+                          {firstFourPairCount > 0 && ` (${firstFourPairCount} play-in pairs share slots)`}
                         </span>
                       </div>
-                      {values.selectedTeams.length % values.maxPlayers !== 0 && (
+                      {effectiveTeamCount % values.maxPlayers !== 0 && (
                         <span className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded">
-                          {values.selectedTeams.length % values.maxPlayers} lowest-seeded excluded
+                          {effectiveTeamCount % values.maxPlayers} lowest-seeded excluded
                         </span>
                       )}
                     </div>
