@@ -33,7 +33,7 @@ export function calculateAllocation(teamCount: number, playerCount: number, firs
   }
 
   // Generate suggestions for valid configurations
-  const suggestions = findValidConfigurations(teamCount, playerCount);
+  const suggestions = findValidConfigurations(effectiveTeamCount, playerCount);
   return { isValid: false, teamsPerPlayer, remainder, excludedCount: remainder, suggestions };
 }
 
