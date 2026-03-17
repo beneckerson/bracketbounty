@@ -14,20 +14,39 @@ const LEAGUE_TO_SPORT_KEY: Record<string, string> = {
   MLB: 'baseball_mlb',
 };
 
+// Hash a string to pick a color from the palette
+const TEAM_COLOR_PALETTE = [
+  'team-crimson', 'team-scarlet', 'team-red', 'team-green', 'team-orange',
+  'team-navy', 'team-blue', 'team-purple', 'team-gold', 'team-teal',
+];
+
+function hashToColor(str: string): string {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return TEAM_COLOR_PALETTE[Math.abs(hash) % TEAM_COLOR_PALETTE.length];
+}
+
 // Parse team name from Odds API format
-function parseTeamName(fullName: string): { name: string; abbreviation: string; code: string } {
-  // Extract last word as abbreviation basis
+function parseTeamName(fullName: string): { name: string; abbreviation: string; code: string; color: string } {
   const parts = fullName.split(' ');
-  const lastWord = parts[parts.length - 1];
   
-  // Create code from first letters or common abbreviations
-  let abbreviation = '';
+  // Build abbreviation: for multi-word names, use school initials + mascot
+  // e.g. "Boston College Eagles" → "BC Eagles", "TCU Horned Frogs" → "TCU Horned Frogs"
+  let abbreviation = fullName;
   if (parts.length === 1) {
-    abbreviation = fullName.substring(0, 3).toUpperCase();
+    abbreviation = fullName.substring(0, 4).toUpperCase();
   } else if (parts.length === 2) {
-    abbreviation = (parts[0][0] + parts[1].substring(0, 2)).toUpperCase();
-  } else {
-    abbreviation = parts.map(p => p[0]).join('').toUpperCase().substring(0, 4);
+    // "Duke Blue" → "Duke Blue" (keep as-is for short names)
+    abbreviation = fullName;
+  } else if (parts.length >= 3) {
+    // "Boston College Eagles" → "BC Eagles"
+    const mascot = parts[parts.length - 1];
+    const schoolParts = parts.slice(0, -1);
+    const initials = schoolParts.map(w => w[0]).join('');
+    abbreviation = `${initials} ${mascot}`;
   }
   
   // Code is uppercase, no spaces
@@ -37,6 +56,7 @@ function parseTeamName(fullName: string): { name: string; abbreviation: string; 
     name: fullName,
     abbreviation,
     code,
+    color: hashToColor(code),
   };
 }
 
