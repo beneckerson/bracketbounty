@@ -115,11 +115,23 @@ export function NCAAGameSelector() {
     return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
   }
 
+  const TEAM_COLOR_PALETTE = [
+    'team-crimson', 'team-scarlet', 'team-red', 'team-green', 'team-orange',
+    'team-navy', 'team-blue', 'team-purple', 'team-gold', 'team-teal',
+  ];
+
+  function hashToColor(str: string): string {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash |= 0;
+    }
+    return TEAM_COLOR_PALETTE[Math.abs(hash) % TEAM_COLOR_PALETTE.length];
+  }
+
   function toAbbreviation(name: string): string {
-    // Use initials of multi-word names to avoid duplicates like "Eagles"
     const words = name.split(/\s+/);
     if (words.length <= 2) return name;
-    // For names like "Boston College Eagles", use "BC Eagles"
     const mascot = words[words.length - 1];
     const initials = words.slice(0, -1).map(w => w[0]).join('');
     return `${initials} ${mascot}`;
@@ -167,10 +179,10 @@ export function NCAAGameSelector() {
         savedEvents.push(upserted);
         savedCount++;
 
-        // Upsert teams
+        // Upsert teams with hash-based colors
         const teams = [
-          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB' },
-          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB' },
+          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB', color: hashToColor(homeCode) },
+          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB', color: hashToColor(awayCode) },
         ];
         await supabase.from('teams').upsert(teams, { onConflict: 'code', ignoreDuplicates: true });
       }

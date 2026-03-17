@@ -55,6 +55,7 @@ export default function CreatePool() {
   const [matchupPreviews, setMatchupPreviews] = useState<MatchupPreviewData[]>([]);
   const [loadingMatchups, setLoadingMatchups] = useState(false);
   const [teamsMap, setTeamsMap] = useState<Record<string, Team>>({});
+  const [firstFourPairCount, setFirstFourPairCount] = useState(0);
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -94,6 +95,18 @@ export default function CreatePool() {
       if (rosterData && rosterData.length > 0) {
         const allTeamCodes = rosterData.map(r => r.team_code);
         form.setValue('selectedTeams', allTeamCodes);
+      }
+
+      // For March Madness, detect First Four pairs
+      if (comp.key === 'march_madness') {
+        const { data: ffEvents } = await supabase
+          .from('events')
+          .select('id')
+          .eq('competition_key', 'march_madness')
+          .eq('round_key', 'first_four');
+        setFirstFourPairCount(ffEvents?.length || 0);
+      } else {
+        setFirstFourPairCount(0);
       }
     } catch (error) {
       console.error('Error fetching roster teams:', error);
@@ -216,15 +229,16 @@ export default function CreatePool() {
 
   // Calculate allocation status
   const teamCount = values.selectedTeams.length;
+  const effectiveTeamCount = teamCount - firstFourPairCount;
   const playerCount = values.maxPlayers;
 
   // Auto-sync teamsPerPlayer when the math divides evenly
   useEffect(() => {
-    if (teamCount > 0 && playerCount > 0 && teamCount % playerCount === 0) {
-      const computed = Math.floor(teamCount / playerCount);
+    if (effectiveTeamCount > 0 && playerCount > 0 && effectiveTeamCount % playerCount === 0) {
+      const computed = Math.floor(effectiveTeamCount / playerCount);
       form.setValue('teamsPerPlayer', computed);
     }
-  }, [teamCount, playerCount, form]);
+  }, [effectiveTeamCount, playerCount, form]);
 
   // Fetch matchups and teams when entering step 4 (Review)
   useEffect(() => {
@@ -471,10 +485,11 @@ export default function CreatePool() {
                       render={({ field }) => (
                         <FormItem>
                           <div className="flex items-center justify-between">
-                            <FormLabel>Number of Players</FormLabel>
-                            {teamCount > 0 && playerCount > 0 && (
+                             <FormLabel>Number of Players</FormLabel>
+                            {effectiveTeamCount > 0 && playerCount > 0 && (
                               <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
-                                {Math.floor(teamCount / playerCount)} team{Math.floor(teamCount / playerCount) !== 1 ? 's' : ''} each
+                                {Math.floor(effectiveTeamCount / playerCount)} team{Math.floor(effectiveTeamCount / playerCount) !== 1 ? 's' : ''} each
+                                {firstFourPairCount > 0 && ` (${effectiveTeamCount} slots)`}
                               </span>
                             )}
                           </div>
@@ -488,7 +503,7 @@ export default function CreatePool() {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            {teamCount} teams selected
+                            {teamCount} teams selected{firstFourPairCount > 0 ? ` (${firstFourPairCount} First Four pairs = ${effectiveTeamCount} ownership slots)` : ''}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -501,6 +516,7 @@ export default function CreatePool() {
                         teamCount={teamCount}
                         playerCount={playerCount}
                         onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
+                        firstFourPairs={firstFourPairCount}
                       />
                     )}
 
@@ -589,12 +605,13 @@ export default function CreatePool() {
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-muted-foreground">👥</span>
                         <span className="text-sm font-medium">
-                          {values.maxPlayers} players • {Math.floor(values.selectedTeams.length / values.maxPlayers)} team{Math.floor(values.selectedTeams.length / values.maxPlayers) !== 1 ? 's' : ''} each
+                          {values.maxPlayers} players • {Math.floor(effectiveTeamCount / values.maxPlayers)} team{Math.floor(effectiveTeamCount / values.maxPlayers) !== 1 ? 's' : ''} each
+                          {firstFourPairCount > 0 && ` (${firstFourPairCount} play-in pairs share slots)`}
                         </span>
                       </div>
-                      {values.selectedTeams.length % values.maxPlayers !== 0 && (
+                      {effectiveTeamCount % values.maxPlayers !== 0 && (
                         <span className="text-xs text-amber-600 bg-amber-50 dark:bg-amber-950/30 px-2 py-1 rounded">
-                          {values.selectedTeams.length % values.maxPlayers} lowest-seeded excluded
+                          {effectiveTeamCount % values.maxPlayers} lowest-seeded excluded
                         </span>
                       )}
                     </div>

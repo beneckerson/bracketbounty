@@ -39,16 +39,18 @@ export function MatchupPreview({ matchup, className }: MatchupPreviewProps) {
   return (
     <div className={`flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-border ${className || ''}`}>
       {/* Away Team */}
-      <div className="flex items-center gap-2 flex-1">
+      <div className="flex items-center gap-2 flex-1 min-w-0">
         <SeedBadge seed={matchup.awayTeam.seed} className="text-xs" />
         <TeamBar team={matchup.awayTeam} className="text-xs px-2 py-0.5" />
+        <span className="text-xs text-muted-foreground truncate hidden sm:inline">{matchup.awayTeam.name}</span>
       </div>
       
       {/* VS / @ */}
-      <span className="text-xs text-muted-foreground font-medium">@</span>
+      <span className="text-xs text-muted-foreground font-medium flex-shrink-0">@</span>
       
       {/* Home Team */}
-      <div className="flex items-center gap-2 flex-1 justify-end">
+      <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+        <span className="text-xs text-muted-foreground truncate hidden sm:inline">{matchup.homeTeam.name}</span>
         <TeamBar team={matchup.homeTeam} className="text-xs px-2 py-0.5" />
         <SeedBadge seed={matchup.homeTeam.seed} className="text-xs" />
       </div>
