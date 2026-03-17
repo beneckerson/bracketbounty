@@ -7,12 +7,14 @@ interface AllocationCalculatorProps {
   teamCount: number;
   playerCount: number;
   onPlayerCountChange?: (count: number) => void;
+  firstFourPairs?: number;
 }
 
 export function AllocationCalculator({
   teamCount,
   playerCount,
   onPlayerCountChange,
+  firstFourPairs = 0,
 }: AllocationCalculatorProps) {
   const [acknowledged, setAcknowledged] = useState(false);
 
