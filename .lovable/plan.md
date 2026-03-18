@@ -1,141 +1,59 @@
-## ✅ Completed: Fix Missing Teams + Manual Events (Duplicate-Safe)
 
-### What was implemented
 
-1. **`sync-odds` duplicate-safe matching**: Before upserting, checks for existing events with `external_event_id IS NULL` and matching team codes (both orientations). If found, adopts the manual event by setting its `external_event_id`. No duplicates when API starts listing those games Wednesday.
+## Fix First Four Pairings for March Madness Pool Setup
 
-2. **Manual event creation dialog in EventsManager**: "Create Event" button opens a dialog with home/away team inputs, round selector, start time, and optional First Four linkage via `feeds_into_event_id`.
+### Problem
+There are no `first_four` events in the database, so the allocation calculator can't detect pairs and shows "4 lowest-seeded teams will be excluded" for 68 teams / 8 players. The existing pairing logic in `start-pool` and `resolve-event` already handles paired ownership and winner transfer — but it needs the events to exist first.
 
-3. **RosterEditor improvements**:
-   - "Sync from Events" button extracts unique team codes from all imported events and adds missing ones to both `teams` table and `competition_rosters`
-   - Manual team code text input to add teams not yet in any event (e.g., Tennessee)
+### Root Cause
+The admin has no streamlined way to define which 4 pairs of teams are First Four matchups. The NCAAGameSelector only works with API events, and First Four games may not appear in the API until game day.
 
-4. **NCAAGameSelector abbreviation fix**: Uses initials + mascot (e.g., "BC Eagles") instead of just the last word to prevent duplicate abbreviations.
+### Solution: Add "First Four Pairings" Admin UI + Placeholder Events
 
-## Revised NCAA Tournament Plan — 64 Teams, Play-in Pairs
+#### 1. Add First Four Pairings section to EventsManager
+**File: `src/components/admin/EventsManager.tsx`**
 
-### Key Clarification
+Add a dedicated "First Four Pairings" card/section that:
+- Shows 4 pairing slots, each with two team selectors (from the competition roster)
+- On save, creates/updates `first_four` events in the `events` table with `round_key = 'first_four'`, no `external_event_id`
+- Also lets the admin link each pairing to a Round of 64 event (set `feeds_into_event_id`) — or auto-create a placeholder R64 event with a known opponent (e.g., BYU vs "First Four Winner")
+- Shows existing first_four events if they already exist, pre-populated for editing
 
-The user wants **maxPlayers: 64**, not 68. The 4 First Four play-in games each produce 1 winner that fills a Round of 64 slot. When a player is assigned a play-in slot, they own **both teams in that play-in game** — so it's effectively 64 draft-able "slots" (60 known teams + 4 play-in pairs).
-
-### How Play-in Pairs Work
-
-- The tournament field has 64 Round of 64 slots
-- 4 of those slots are filled by First Four winners
-- Each play-in pair (e.g., "Texas Southern / Fairleigh Dickinson") is treated as **one slot** for ownership purposes
-- The owner of a play-in pair owns whichever team wins the First Four game
-- Before the play-in resolves: bracket shows "Play-in Winner (Team A / Team B)"
-- After it resolves: bracket shows the actual winning team
-
-### Database Changes
-
-**Add `feeds_into_event_id` to `events` table:**
-
-```sql
-ALTER TABLE events ADD COLUMN feeds_into_event_id uuid REFERENCES events(id);
-CREATE INDEX idx_events_feeds_into ON events(feeds_into_event_id) WHERE feeds_into_event_id IS NOT NULL;
+Each pairing creates an event like:
 ```
-
-This links a First Four event to the Round of 64 event it feeds into.
-
-### Competition Config
-
-```typescript
 {
-  key: 'march_madness',
-  name: 'NCAA Tournament',
-  shortName: 'NCAAT',
-  description: '64-team single-elimination bracket with First Four play-ins',
-  format: 'single_elimination',
-  captureEnabled: true,
-  defaultTeamsPerPlayer: 1,
-  maxPlayers: 64,   // 60 known + 4 play-in pairs (each pair = 1 slot)
-  icon: '🏀',
-  season: '2025-2026',
-  oddsApiSportKey: 'basketball_ncaab',
+  competition_key: 'march_madness',
+  round_key: 'first_four',
+  round_order: 0,
+  home_team: 'TEXAS_LONGHORNS',
+  away_team: 'NC_STATE_WOLFPACK',
+  status: 'scheduled',
+  event_type: 'game',
+  start_time: <user-set or null>
 }
 ```
 
-### Round Definitions
+#### 2. Allow creating placeholder Round of 64 events linked to First Four
+When the admin creates a First Four pairing, optionally let them specify the R64 opponent. This creates a placeholder R64 event where one team is the R64 opponent and the other is a TBD placeholder team code (e.g., the home_team of the First Four game as a stand-in). The `feeds_into_event_id` on the First Four event points to this R64 event.
 
-```text
-first_four      (order 0) — 4 play-in games (NOT assignable as separate slots)
-round_of_64     (order 1) — 32 games (4 slots are play-in pairs)
-round_of_32     (order 2) — 16 games
-sweet_sixteen   (order 3) — 8 games
-elite_eight     (order 4) — 4 games
-final_four      (order 5) — 2 games
-championship    (order 6) — 1 game
-```
+When the actual R64 game appears in the API later, the existing "adoption" logic in `sync-odds` can match it, or the admin can manually link it.
 
-### Ownership Logic for Play-in Pairs
+#### 3. Allocation calculator already works — just needs events
+Once `first_four` events exist in the DB, the existing code in `CreatePool.tsx` (lines 101-107) correctly counts them and passes `firstFourPairCount` to the `AllocationCalculator`. The `start-pool` function (lines 171-199) already pairs these teams into single slots. The `resolve-event` function (lines 79-127) already transfers ownership from loser to winner.
 
-When `start-pool` assigns teams for `march_madness`:
+No changes needed to allocation logic, start-pool, or resolve-event.
 
-- For the 60 "normal" Round of 64 teams: assign ownership as usual (1 team code per slot)
-- For the 4 play-in pairs: the pool's `selected_teams` list will contain a **placeholder team code** (e.g., `PLAYIN_1`, `PLAYIN_2`, etc.) representing the pair. The owner of that placeholder owns both First Four teams in the pair.
-- When the First Four game resolves, the placeholder ownership transfers to the winning team's actual code.
+#### 4. Minor fix: ensure first_four events aren't shown as matchups in bracket
+The bracket view may show First Four as separate matchup cards. Since the user said "don't worry about visual representation of the rounds in the UI" for First Four, we should hide `first_four` round matchups from the bracket display or show them minimally.
 
-Alternatively (simpler approach): the admin selects 64 teams in the roster — the 4 play-in slots are each represented by one of the two teams in the pair (e.g., pick the higher-seeded one). When the First Four resolves, the `ownership` record's `team_code` gets updated to the actual winner. The bracket display handles the "Team A / Team B" label via `feeds_into_event_id`.
+### Files to modify
+1. **`src/components/admin/EventsManager.tsx`** — Add "First Four Pairings" section with 4 pair slots, team selectors from roster, save creates `first_four` events, optional R64 opponent linkage
+2. **`src/components/bracket/BracketView.tsx`** — Optionally hide or collapse `first_four` round in bracket display
 
-**Recommended: simpler approach** — no placeholder codes needed. The admin picks 64 team codes for the roster. For play-in slots, the code is initially one of the two First Four teams. The bracket display uses the `feeds_into_event_id` linkage to show both team names. When the First Four resolves, the ownership `team_code` is updated to the actual winner.
+### What already works (no changes needed)
+- `src/lib/allocation-utils.ts` — First Four pair-aware math
+- `src/pages/CreatePool.tsx` — Detects first_four events, passes count to calculator
+- `src/components/pool/AllocationCalculator.tsx` — Shows paired allocation info
+- `supabase/functions/start-pool/index.ts` — Pairs First Four teams into single ownership slots
+- `supabase/functions/resolve-event/index.ts` — Transfers ownership from loser to winner on First Four resolution
 
-### Implementation Steps
-
-#### 1. Database migration
-- Add `feeds_into_event_id` to `events`
-
-#### 2. Competition config (`src/lib/competitions.ts`)
-- Add `march_madness` entry with `maxPlayers: 64`
-
-#### 3. Round configs
-- Add `MARCH_MADNESS_ROUNDS` to `EventsManager.tsx`, `start-pool/index.ts`, and `getRoundsForCompetition()`
-
-#### 4. Edge function: `fetch-ncaab-events`
-- Proxy the Odds API `/v4/sports/basketball_ncaab/events` endpoint (free, no quota)
-- Returns raw game list for admin manual selection
-
-#### 5. Admin UI: `NCAAGameSelector.tsx`
-- Fetches NCAAB events from the edge function
-- Admin manually picks tournament games (filtering out NIT, CIT, etc.)
-- Assigns rounds (First Four vs Round of 64, etc.)
-- For Round of 64 games with TBD teams: dropdown to link to a First Four game via `feeds_into_event_id`
-
-#### 6. Sync-odds updates
-- Add `march_madness` → `basketball_ncaab` mapping
-- Skip auto-round-detection for march_madness (rounds are admin-assigned)
-- Fall through to dynamic team code generation for NCAAB teams
-
-#### 7. Bracket display
-- When rendering a matchup where the event has a related First Four game (via `feeds_into_event_id`):
-  - Pre-resolution: show "Play-in Winner (Team A / Team B)"
-  - Post-resolution: show the actual winner team
-- Update `Pool.tsx` data fetching to include `feeds_into_event_id` relationships
-- Update `MatchupCard.tsx` and `TeamBar.tsx` for the play-in display variant
-
-#### 8. Resolve-event update for First Four
-- When a First Four game resolves, update the `ownership` table to reflect the winning team's code for any pool that had the play-in slot assigned
-
-### Files to Create
-1. `supabase/functions/fetch-ncaab-events/index.ts`
-2. `src/components/admin/NCAAGameSelector.tsx`
-
-### Files to Modify
-1. **Database migration** — `feeds_into_event_id` column
-2. `src/lib/competitions.ts` — add `march_madness`
-3. `src/components/admin/EventsManager.tsx` — March Madness rounds + NCAAGameSelector integration
-4. `supabase/functions/start-pool/index.ts` — March Madness round configs
-5. `supabase/functions/sync-odds/index.ts` — NCAAB support
-6. `supabase/functions/resolve-event/index.ts` — First Four resolution updates ownership
-7. `src/pages/Pool.tsx` — fetch play-in linkage data
-8. `src/components/bracket/MatchupCard.tsx` — play-in display
-9. `src/components/bracket/TeamBar.tsx` — play-in variant
-
-### Suggested Implementation Order
-1. Database migration
-2. Competition config + round configs
-3. `fetch-ncaab-events` edge function
-4. `NCAAGameSelector` admin UI
-5. `sync-odds` updates
-6. Bracket display for play-in pairs
-7. First Four resolution logic in `resolve-event`
