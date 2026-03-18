@@ -142,7 +142,7 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
 
       {/* Round Tabs */}
       <RoundTabs 
-        rounds={pool.rounds}
+        rounds={displayRounds}
         activeRoundId={activeRoundId}
         onSelectRound={setActiveRoundId}
       />
