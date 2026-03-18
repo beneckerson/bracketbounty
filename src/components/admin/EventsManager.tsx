@@ -523,6 +523,136 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
   const firstFourEvents = events.filter(e => e.round_key === 'first_four');
 
+  // First Four Pairings state
+  const [ffPairings, setFfPairings] = useState<Array<{
+    teamA: string;
+    teamB: string;
+    r64Opponent: string;
+    existingEventId?: string;
+    existingR64EventId?: string;
+  }>>([]);
+  const [ffSaving, setFfSaving] = useState(false);
+  const [ffTeamOpens, setFfTeamOpens] = useState<Record<string, boolean>>({});
+  const [ffSearches, setFfSearches] = useState<Record<string, string>>({});
+
+  // Initialize pairings from existing first_four events
+  useEffect(() => {
+    if (competitionKey !== 'march_madness') return;
+    
+    // Build pairings from existing first_four events
+    const existingPairings = firstFourEvents.map(ff => {
+      // Find the R64 event that this feeds into
+      const r64Event = events.find(e => {
+        // Check if any event references this first_four event via feeds_into
+        return false; // We check from the other direction
+      });
+      // Actually check: the first_four event should have feeds_into_event_id set
+      // But feeds_into is on the first_four event pointing to R64
+      // We need to find the R64 event this FF feeds into
+      const linkedR64 = events.find(e => 
+        e.round_key !== 'first_four' && 
+        firstFourEvents.some(f => f.id === ff.id) &&
+        // Check if any first_four event's feeds_into points to this event
+        false // We don't have feeds_into_event_id in our Event interface
+      );
+      
+      return {
+        teamA: ff.home_team,
+        teamB: ff.away_team,
+        r64Opponent: '',
+        existingEventId: ff.id,
+      };
+    });
+
+    // Pad to 4 pairings
+    while (existingPairings.length < 4) {
+      existingPairings.push({ teamA: '', teamB: '', r64Opponent: '' });
+    }
+    
+    setFfPairings(existingPairings);
+  }, [events, competitionKey]);
+
+  function setFfTeamOpen(key: string, open: boolean) {
+    setFfTeamOpens(prev => ({ ...prev, [key]: open }));
+  }
+  function setFfSearch(key: string, value: string) {
+    setFfSearches(prev => ({ ...prev, [key]: value }));
+  }
+
+  async function handleSaveFirstFourPairings() {
+    // Validate: each pairing needs both teams
+    const activePairings = ffPairings.filter(p => p.teamA || p.teamB);
+    for (const p of activePairings) {
+      if (!p.teamA || !p.teamB) {
+        toast.error('Each pairing needs both teams filled in');
+        return;
+      }
+    }
+
+    setFfSaving(true);
+    try {
+      for (const pairing of activePairings) {
+        const homeCode = pairing.teamA.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+        const awayCode = pairing.teamB.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+
+        if (pairing.existingEventId) {
+          // Update existing event
+          await supabase.from('events').update({
+            home_team: homeCode,
+            away_team: awayCode,
+          }).eq('id', pairing.existingEventId);
+        } else {
+          // Create new first_four event
+          const { data: newEvent, error } = await supabase.from('events').insert({
+            competition_key: competitionKey,
+            round_key: 'first_four',
+            round_order: 0,
+            home_team: homeCode,
+            away_team: awayCode,
+            event_type: 'game' as const,
+            status: 'scheduled' as const,
+          }).select().single();
+
+          if (error) throw error;
+
+          // If R64 opponent specified, create a placeholder R64 event linked to this FF
+          if (pairing.r64Opponent && newEvent) {
+            const r64OpponentCode = pairing.r64Opponent.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
+            const { data: r64Event } = await supabase.from('events').insert({
+              competition_key: competitionKey,
+              round_key: 'round_of_64',
+              round_order: 1,
+              home_team: r64OpponentCode,
+              away_team: homeCode, // Use FF home team as placeholder
+              event_type: 'game' as const,
+              status: 'scheduled' as const,
+            }).select().single();
+
+            if (r64Event) {
+              // Link FF event to R64 event
+              await supabase.from('events').update({
+                feeds_into_event_id: r64Event.id,
+              }).eq('id', newEvent.id);
+            }
+          }
+        }
+
+        // Ensure both teams exist in teams table
+        await supabase.from('teams').upsert([
+          { code: homeCode, name: pairing.teamA.trim(), abbreviation: homeCode, league: 'NCAAB' },
+          { code: awayCode, name: pairing.teamB.trim(), abbreviation: awayCode, league: 'NCAAB' },
+        ], { onConflict: 'code', ignoreDuplicates: true });
+      }
+
+      toast.success(`Saved ${activePairings.length} First Four pairing(s)`);
+      await fetchEvents();
+    } catch (error: any) {
+      console.error('Error saving First Four pairings:', error);
+      toast.error(error.message || 'Failed to save pairings');
+    }
+    setFfSaving(false);
+  }
+
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
   // Separate events into pending resolution and resolved

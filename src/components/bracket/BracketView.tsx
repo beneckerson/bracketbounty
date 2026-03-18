@@ -23,11 +23,17 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
   const { user } = useAuth();
   
   // Compute the most relevant round to show by default
+  // Filter out first_four round from display
+  const displayRounds = useMemo(() => 
+    pool.rounds.filter(r => r.key !== 'first_four'),
+    [pool.rounds]
+  );
+
   const defaultRoundId = useMemo(() => {
     const now = new Date();
     
     // 1. Find rounds with upcoming matchups (startTime in the future)
-    const roundsWithUpcoming = pool.rounds.map(round => {
+    const roundsWithUpcoming = displayRounds.map(round => {
       const upcomingMatchups = round.matchups.filter(m => 
         m.startTime && new Date(m.startTime) > now && m.status === 'upcoming'
       );
@@ -49,15 +55,14 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
     }
     
     // 3. If no upcoming matchups, find the latest round with matchups (most recent action)
-    const roundsWithMatchups = pool.rounds.filter(r => r.matchups.length > 0);
+    const roundsWithMatchups = displayRounds.filter(r => r.matchups.length > 0);
     if (roundsWithMatchups.length > 0) {
-      // Return the latest round (highest order) that has matchups
       return roundsWithMatchups[roundsWithMatchups.length - 1].id;
     }
     
     // 4. Fallback to first round
-    return pool.rounds[0]?.id || '';
-  }, [pool.rounds]);
+    return displayRounds[0]?.id || '';
+  }, [displayRounds]);
   
   const [activeRoundId, setActiveRoundId] = useState(defaultRoundId);
   
