@@ -566,7 +566,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
     // Pad to 4 pairings
     while (existingPairings.length < 4) {
-      existingPairings.push({ teamA: '', teamB: '', r64Opponent: '' });
+      existingPairings.push({ teamA: '', teamB: '', r64Opponent: '', existingEventId: undefined });
     }
     
     setFfPairings(existingPairings);
