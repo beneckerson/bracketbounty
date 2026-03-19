@@ -1,43 +1,70 @@
 
+Goal: fix the blocked “Create Pool” action first, then add admin quality-control overrides for team name/abbreviation/color so bad imports can be corrected safely.
 
-## Fix Team Display Names and Colors in Pool Creation
+What I found from the current code:
+- `CreatePool` can fail silently at submit time because `handleSubmit` has no invalid callback and several validated fields are hidden (`selectedTeams`, `teamsPerPlayer`, `competitionKey`), so users can click “Create Pool” and see no actionable error.
+- Create flow currently surfaces only a generic failure toast on backend errors, which hides the real cause.
+- Team metadata quality can degrade from admin ingestion paths:
+  - `RosterEditor.addManualTeam()` writes `abbreviation: code` (UPPER_SNAKE_CASE).
+  - `EventsManager` create/edit upserts teams with `abbreviation: CODE`.
+- There is no admin UI to override/fix incorrect team display metadata.
+- Admin roster color swatches still use raw `team.color` as CSS color in places, which is incorrect for token values like `team-orange`.
 
-### Problem 1: Team names display as UPPER_SNAKE_CASE
-The `TeamBar` component displays `team.abbreviation`. For NCAAB teams, abbreviations are inconsistent — some are short codes like "MICH", "OSU", others are mascot names like "Wildcats", "Badgers". Multiple teams share the same mascot (e.g., 3 teams all show "Wildcats"). The school name would be far more recognizable.
+Implementation plan:
 
-**Fix**: Update the `abbreviation` column for all NCAAB teams in the database to use the school name instead of the mascot. For example:
-- "Kentucky Wildcats" → abbreviation: "Kentucky" (not "Wildcats")
-- "Ohio State Buckeyes" → abbreviation: "Ohio St" (not "OSU")
-- "North Carolina Tar Heels" → abbreviation: "UNC" (not "Heels")
+1) Make Create Pool failure explicit and debuggable (highest priority)
+- Update `src/pages/CreatePool.tsx` submit flow:
+  - Replace direct `form.handleSubmit(onSubmit)()` click with a wrapper that runs `form.trigger()` first.
+  - Add invalid-submit handler to show a clear toast with first blocking field/error.
+  - Recompute `teamsPerPlayer` immediately before submit from selected teams/player count.
+  - Disable or block submit with clear messaging when required hidden fields are invalid.
+- Improve backend error visibility:
+  - In catch block, include real error message (when safe) so “nothing happens” becomes actionable.
 
-Also fix the `sync-teams` edge function's `parseTeamName` so future syncs produce school-name abbreviations instead of mascot-only or inconsistent ones.
+2) Tighten step validation before reaching Review
+- In `CreatePool.tsx`, validate step-specific requirements on Continue (especially player/team math) so users don’t reach Review with invalid hidden state.
+- Add a compact “preflight” warning panel on Review listing unresolved validation issues.
 
-### Problem 2: Team color indicators broken in TeamSelector
-The `TeamSelector` component uses `team.color` (e.g., `"team-orange"`) as an inline CSS `backgroundColor` value at line 232. But `"team-orange"` is a Tailwind token, not valid CSS. The color indicator renders as invisible/transparent.
+3) Add admin override controls for team metadata (name/abbreviation/color)
+- Extend `src/components/admin/RosterEditor.tsx`:
+  - Add per-team “Edit” action/dialog with fields:
+    - Display name
+    - Abbreviation
+    - Color token (team palette)
+  - Save directly to `teams` table (admin-only via existing RLS).
+  - Refresh local roster/teams state after save.
+- Keep overrides on the roster-admin surface (as requested), not buried elsewhere.
 
-**Fix**: Convert the Tailwind token to an actual CSS value using `hsl(var(--team-orange))` format in `TeamSelector`.
+4) Prevent future bad team metadata at ingestion points
+- Update admin creation/import paths to stop writing abbreviations as raw codes:
+  - `RosterEditor.addManualTeam()`
+  - `EventsManager` manual create/edit team upserts
+  - `NCAAGameSelector` abbreviation derivation path
+- Standardize on a shared helper for:
+  - `toTeamCode(name)`
+  - `deriveSchoolAbbreviation(name)` (handles multi-word mascots)
+  - `hashToColor(code)` fallback
 
-### Changes
+5) Fix color rendering consistency in admin + pool selectors
+- Add shared resolver utility for token-based colors (`team-*`) to CSS values.
+- Apply to:
+  - `RosterEditor` swatches (both roster rows and add-team chips)
+  - Any other inline style consumers that currently pass token strings directly.
+- Keep `TeamBar` token class mapping behavior for bracket pills.
 
-**1. `src/components/pool/TeamSelector.tsx`** — Fix inline color
-- Change `style={{ backgroundColor: team.color || 'hsl(var(--muted))' }}` to resolve the token:
-  ```
-  style={{ backgroundColor: `hsl(var(--${team.color || 'team-gray'}))` }}
-  ```
+6) One-time quality cleanup migration for existing bad rows
+- Add a migration to normalize legacy rows where abbreviation is code-like (underscore/all-caps patterns), prioritizing school-name abbreviation derivation.
+- Backfill invalid/missing colors to valid palette tokens.
+- No RLS policy changes needed (existing `teams` admin policy already supports this).
 
-**2. `supabase/functions/sync-teams/index.ts`** — Fix `parseTeamName` to produce school-name abbreviations
-- For multi-word team names like "Kentucky Wildcats", use all words except the last (mascot) as the abbreviation: "Kentucky"
-- For names like "North Carolina Tar Heels" (mascot is 2 words), apply known multi-word mascot list or just drop last word: "North Carolina Tar" → needs smarter logic
-- Best approach: use all-but-last-word, which already exists but was producing the full school name. The real issue is that `parseTeamName` was not being applied during initial team inserts.
+7) QA and verification checklist
+- Reproduce original path: create pool with March Madness setup (32/64 selected teams, 2 players) and verify Create Pool opens success dialog.
+- Force invalid state and confirm submit now shows explicit reason (no silent no-op).
+- In admin roster, override one team’s name/abbreviation/color and verify it reflects in:
+  - Create Pool review matchups
+  - Pool bracket/team pills
+- Regression-check manual event/team creation to ensure no new UPPER_SNAKE abbreviations are introduced.
 
-**3. Database update** — Fix existing NCAAB team abbreviations
-- Run a data update to set `abbreviation` to the school name (all words of `name` except the last word) for all NCAAB teams. This handles most cases correctly (e.g., "Iowa State Cyclones" → "Iowa State", "Duke Blue Devils" → "Duke Blue" — need to handle multi-word mascots)
-- Better approach: extract school name by removing known mascot patterns, or simply use all-but-last-word which works for 90%+ of cases
-
-**4. `src/components/pool/MatchupPreview.tsx`** — Already uses `TeamBar` which shows abbreviation, and shows `team.name` as secondary text. No changes needed here once abbreviations are fixed.
-
-### Summary
-1. `src/components/pool/TeamSelector.tsx` — Fix color indicator to use CSS variable format
-2. `supabase/functions/sync-teams/index.ts` — Fix abbreviation generation for future syncs
-3. Database update — Batch-fix existing NCAAB team abbreviations to school names
-
+Technical details
+- Primary files: `src/pages/CreatePool.tsx`, `src/components/admin/RosterEditor.tsx`, `src/components/admin/EventsManager.tsx`, `src/components/admin/NCAAGameSelector.tsx`, plus a new shared team-format utility and one SQL migration.
+- Backend security model remains intact: team metadata edits stay admin-restricted through existing backend policies.
