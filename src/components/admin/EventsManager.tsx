@@ -895,7 +895,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           <DialogHeader>
             <DialogTitle>Create Event Manually</DialogTitle>
             <DialogDescription>
-              Add a game that doesn't exist in the Odds API yet (e.g., R64 games with TBD First Four opponents).
+              Add a game that doesn't exist in the Odds API yet.
               When the API starts listing this game, it will be automatically adopted — no duplicates.
             </DialogDescription>
           </DialogHeader>
