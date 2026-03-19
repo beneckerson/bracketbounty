@@ -749,6 +749,14 @@ export default function Pool() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="pt-20">
+          {isCreator && (
+            <div className="max-w-7xl mx-auto px-4 pt-4 flex justify-end">
+              <Button variant="outline" size="sm" onClick={() => setManageOpen(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Manage
+              </Button>
+            </div>
+          )}
           <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
         </main>
         
@@ -762,6 +770,18 @@ export default function Pool() {
           onViewBracket={handleAssignmentRevealClose}
           showShuffleAnimation={true}
         />
+
+        {/* Manage Pool Drawer */}
+        {pool && isCreator && (
+          <ManagePoolDrawer
+            open={manageOpen}
+            onOpenChange={setManageOpen}
+            pool={pool}
+            members={members}
+            onMembersChange={fetchPoolData}
+            onPoolDelete={() => navigate('/my-pools')}
+          />
+        )}
       </div>
     );
   }
