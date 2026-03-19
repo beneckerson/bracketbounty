@@ -181,6 +181,10 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [spreadAway, setSpreadAway] = useState('');
   const [spreadSaving, setSpreadSaving] = useState(false);
 
+  // Un-resolve state
+  const [unresolveEvent, setUnresolveEvent] = useState<Event | null>(null);
+  const [unresolving, setUnresolving] = useState(false);
+
   // Fetch roster teams when create or edit dialog opens
   const isMarchMadness = competitionKey === 'march_madness';
   
