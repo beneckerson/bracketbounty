@@ -876,6 +876,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                           <TableHead>Matchup</TableHead>
                           <TableHead>Round</TableHead>
                           <TableHead>Final Score</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -887,6 +888,16 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                             <TableCell>{getRoundName(event.round_key)}</TableCell>
                             <TableCell>
                               {event.final_away_score ?? '-'} - {event.final_home_score ?? '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSpreadOverride(event)} title="Override spread">
+                                  <Settings2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUnresolveEvent(event)} title="Un-resolve event">
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
