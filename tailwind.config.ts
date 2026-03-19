@@ -75,6 +75,7 @@ export default {
           purple: "hsl(var(--team-purple))",
           gold: "hsl(var(--team-gold))",
           teal: "hsl(var(--team-teal))",
+          gray: "hsl(var(--team-gray))",
         },
         bracket: {
           line: "hsl(var(--bracket-line))",

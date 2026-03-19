@@ -17,6 +17,7 @@ const colorMap: Record<string, string> = {
   'team-purple': 'bg-team-purple',
   'team-gold': 'bg-team-gold',
   'team-teal': 'bg-team-teal',
+  'team-gray': 'bg-team-gray',
 };
 
 // Hash-based color for teams without explicit color mapping

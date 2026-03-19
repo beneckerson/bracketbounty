@@ -65,6 +65,7 @@
     --team-purple: 280 55% 45%;
     --team-gold: 45 80% 45%;
     --team-teal: 175 60% 35%;
+    --team-gray: 0 0% 50%;
 
     /* Shadows */
     --shadow-card: 0 2px 8px -2px rgba(0, 0, 0, 0.08), 0 4px 16px -4px rgba(0, 0, 0, 0.12);
