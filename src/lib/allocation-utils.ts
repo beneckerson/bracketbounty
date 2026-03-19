@@ -16,24 +16,21 @@ export interface AllocationSuggestion {
 
 /**
  * Calculate if teams divide evenly among players
- * @param firstFourPairs - number of First Four play-in pairs (each pair counts as 1 slot instead of 2)
  */
-export function calculateAllocation(teamCount: number, playerCount: number, firstFourPairs: number = 0): AllocationResult {
+export function calculateAllocation(teamCount: number, playerCount: number): AllocationResult {
   if (playerCount <= 0 || teamCount <= 0) {
     return { isValid: false, teamsPerPlayer: 0, remainder: 0, excludedCount: 0, suggestions: [] };
   }
 
-  // For March Madness: each First Four pair counts as 1 slot (not 2 teams)
-  const effectiveTeamCount = teamCount - firstFourPairs;
-  const teamsPerPlayer = Math.floor(effectiveTeamCount / playerCount);
-  const remainder = effectiveTeamCount % playerCount;
+  const teamsPerPlayer = Math.floor(teamCount / playerCount);
+  const remainder = teamCount % playerCount;
 
   if (remainder === 0 && teamsPerPlayer >= 1) {
     return { isValid: true, teamsPerPlayer, remainder, excludedCount: 0, suggestions: [] };
   }
 
   // Generate suggestions for valid configurations
-  const suggestions = findValidConfigurations(effectiveTeamCount, playerCount);
+  const suggestions = findValidConfigurations(teamCount, playerCount);
   return { isValid: false, teamsPerPlayer, remainder, excludedCount: remainder, suggestions };
 }
 
