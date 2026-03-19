@@ -534,6 +534,28 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setSpreadAway('');
   }
 
+  async function handleUnresolve() {
+    if (!unresolveEvent) return;
+    setUnresolving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('unresolve-event', {
+        body: { event_id: unresolveEvent.id },
+      });
+      if (error) throw error;
+      if (data.success) {
+        toast.success(`Un-resolved ${data.matchups_unresolved} matchup(s) for ${data.away_team} @ ${data.home_team}`);
+        setUnresolveEvent(null);
+        fetchEvents();
+      } else {
+        throw new Error(data.error || 'Failed to un-resolve event');
+      }
+    } catch (error: any) {
+      console.error('Error un-resolving event:', error);
+      toast.error(error.message || 'Failed to un-resolve event');
+    }
+    setUnresolving(false);
+  }
+
   async function handleSpreadOverride() {
     if (!spreadEvent) return;
     const home = parseFloat(spreadHome);
