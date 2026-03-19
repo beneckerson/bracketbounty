@@ -4,12 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { resolveTeamColor, TEAM_COLOR_OPTIONS, deriveSchoolAbbreviation, hashToColor } from '@/lib/team-utils';
 import { toast } from 'sonner';
-import { Plus, Trash2, Check, X, Upload, Save, Users, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Upload, Save, Users, RefreshCw, Pencil } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 
 interface RosterEntry {
