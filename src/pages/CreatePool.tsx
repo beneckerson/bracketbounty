@@ -364,7 +364,12 @@ export default function CreatePool() {
           {/* Form */}
           <Form {...form}>
             <form 
-              onSubmit={(e) => e.preventDefault()}
+              onSubmit={form.handleSubmit(onSubmit, (errors) => {
+                const firstError = Object.entries(errors)[0];
+                const fieldName = firstError?.[0] || 'form';
+                const message = (firstError?.[1] as any)?.message || 'Please fix validation errors';
+                toast({ title: `Validation error: ${fieldName}`, description: String(message), variant: 'destructive' });
+              })}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && currentStep !== 5) {
                   e.preventDefault();
