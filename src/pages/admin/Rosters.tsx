@@ -39,6 +39,66 @@ export default function Rosters() {
   const [newSeasonValue, setNewSeasonValue] = useState('');
   const [creatingNewSeason, setCreatingNewSeason] = useState(false);
   const [syncingTeams, setSyncingTeams] = useState(false);
+  const [deletingRoster, setDeletingRoster] = useState(false);
+  const [deletingEvents, setDeletingEvents] = useState(false);
+
+  const handleDeleteRoster = async () => {
+    if (!selectedCompetition || !selectedSeason) return;
+    setDeletingRoster(true);
+    const { error } = await supabase
+      .from('competition_rosters')
+      .delete()
+      .eq('competition_key', selectedCompetition)
+      .eq('season', selectedSeason);
+    if (error) {
+      toast.error('Failed to delete roster: ' + error.message);
+    } else {
+      toast.success('All roster teams deleted');
+    }
+    setDeletingRoster(false);
+  };
+
+  const handleDeleteEvents = async () => {
+    if (!selectedCompetition) return;
+    setDeletingEvents(true);
+    // First check for events linked to pool_matchups
+    const { data: events } = await supabase
+      .from('events')
+      .select('id')
+      .eq('competition_key', selectedCompetition);
+    
+    if (events && events.length > 0) {
+      const eventIds = events.map(e => e.id);
+      const { data: linkedMatchups } = await supabase
+        .from('pool_matchups')
+        .select('id')
+        .in('event_id', eventIds)
+        .limit(1);
+      
+      if (linkedMatchups && linkedMatchups.length > 0) {
+        toast.error('Cannot delete events — some are linked to active pool matchups. Remove those pools first.');
+        setDeletingEvents(false);
+        return;
+      }
+
+      // Delete lines first (FK dependency)
+      await supabase
+        .from('lines')
+        .delete()
+        .in('event_id', eventIds);
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('competition_key', selectedCompetition);
+    if (error) {
+      toast.error('Failed to delete events: ' + error.message);
+    } else {
+      toast.success('All events deleted');
+    }
+    setDeletingEvents(false);
+  };
 
   // Check if current user is admin
   useEffect(() => {
