@@ -572,7 +572,7 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                 >
                   <div
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: team.color || 'hsl(var(--muted))' }}
+                    style={{ backgroundColor: resolveTeamColor(team.color) }}
                   />
                   {team.abbreviation}
                   <Plus className="w-3 h-3" />
