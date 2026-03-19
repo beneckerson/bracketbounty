@@ -338,13 +338,9 @@ export default function Pool() {
         lines = (linesData || []) as LineData[];
       }
 
-      // Get team codes from events (including feeder events)
+      // Get team codes from events
       const teamCodes = new Set<string>();
       events.forEach(e => {
-        teamCodes.add(e.home_team);
-        teamCodes.add(e.away_team);
-      });
-      feederEvents.forEach(e => {
         teamCodes.add(e.home_team);
         teamCodes.add(e.away_team);
       });
