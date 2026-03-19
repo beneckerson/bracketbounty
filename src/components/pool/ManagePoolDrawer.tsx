@@ -225,7 +225,8 @@ export function ManagePoolDrawer({
             </DrawerHeader>
 
             <div className="px-4 pb-4 space-y-6">
-              {/* Add Guest Player */}
+              {/* Add Guest Player - only in lobby */}
+              {pool.status === 'lobby' && (
               <div className="space-y-3">
                 <h3 className="text-sm font-medium flex items-center gap-2">
                   <UserPlus className="h-4 w-4" />
@@ -259,6 +260,7 @@ export function ManagePoolDrawer({
                   </p>
                 )}
               </div>
+              )}
 
               {/* All Players */}
               <div className="space-y-3">
