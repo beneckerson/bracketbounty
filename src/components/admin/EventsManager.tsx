@@ -79,7 +79,6 @@ const MLB_ROUNDS = [
 
 // Round options for NCAA Tournament (March Madness)
 const MARCH_MADNESS_ROUNDS = [
-  { key: 'first_four', name: 'First Four', order: 0 },
   { key: 'round_of_64', name: 'Round of 64', order: 1 },
   { key: 'round_of_32', name: 'Round of 32', order: 2 },
   { key: 'sweet_sixteen', name: 'Sweet Sixteen', order: 3 },
