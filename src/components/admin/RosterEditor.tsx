@@ -603,6 +603,50 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
           </p>
         </div>
       </CardContent>
+
+      {/* Edit Team Dialog */}
+      <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team: {editingTeam?.code}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Display Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Abbreviation</Label>
+              <Input value={editAbbreviation} onChange={(e) => setEditAbbreviation(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Shown on team pills and bracket</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex flex-wrap gap-2">
+                {TEAM_COLOR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.token}
+                    type="button"
+                    onClick={() => setEditColor(opt.token)}
+                    className={cn(
+                      'w-8 h-8 rounded-full border-2 transition-all',
+                      editColor === opt.token ? 'border-foreground scale-110' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: resolveTeamColor(opt.token) }}
+                    title={opt.label}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTeam(null)}>Cancel</Button>
+            <Button onClick={saveTeamEdit} disabled={editSaving || !editName.trim() || !editAbbreviation.trim()}>
+              {editSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
