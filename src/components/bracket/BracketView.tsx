@@ -24,10 +24,7 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
   
   // Compute the most relevant round to show by default
   // Filter out first_four round from display
-  const displayRounds = useMemo(() => 
-    pool.rounds.filter(r => r.key !== 'first_four'),
-    [pool.rounds]
-  );
+  const displayRounds = useMemo(() => pool.rounds, [pool.rounds]);
 
   const defaultRoundId = useMemo(() => {
     const now = new Date();

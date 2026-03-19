@@ -192,23 +192,19 @@ Deno.serve(async (req) => {
       const memberIndex = index % members.length;
       const member = members[memberIndex];
 
-      // Slot can be a single team code or a pair
-      const teamCodes = Array.isArray(slot) ? slot : [slot];
-      for (const teamCode of teamCodes) {
-        ownershipRecords.push({
-          pool_id: pool_id,
-          member_id: member.id,
-          team_code: teamCode,
-          acquired_via: 'initial',
-        });
-        assignments.push({
-          member_id: member.id,
-          member_name: member.display_name,
-          team_code: teamCode,
-          team_name: teamNameMap[teamCode]?.name || teamCode,
-          team_abbreviation: teamNameMap[teamCode]?.abbreviation || teamCode.substring(0, 3).toUpperCase(),
-        });
-      }
+      ownershipRecords.push({
+        pool_id: pool_id,
+        member_id: member.id,
+        team_code: slot,
+        acquired_via: 'initial',
+      });
+      assignments.push({
+        member_id: member.id,
+        member_name: member.display_name,
+        team_code: slot,
+        team_name: teamNameMap[slot]?.name || slot,
+        team_abbreviation: teamNameMap[slot]?.abbreviation || slot.substring(0, 3).toUpperCase(),
+      });
     });
 
     const { error: ownershipError } = await supabase

@@ -400,31 +400,14 @@ export default function Pool() {
           const homeOwnership = ownershipByTeam[homeTeamCode];
           const awayOwnership = ownershipByTeam[awayTeamCode];
 
-          // Check if this event has a First Four feeder
-          const feederEvent = event ? feederMap[event.id] : null;
-          const feederHomeTeam = feederEvent ? teamMap[feederEvent.home_team] : null;
-          const feederAwayTeam = feederEvent ? teamMap[feederEvent.away_team] : null;
-
-          // For play-in pairs: if a feeder exists and feeder is not yet resolved,
-          // show "Play-in Winner (Team A / Team B)" as the team name
-          function getPlayinTeamName(teamCode: string, teamData: TeamData | undefined): { name: string; abbreviation: string } {
-            if (feederEvent && feederEvent.status !== 'final') {
-              // If a feeder event exists and isn't resolved, always show play-in label
-              const hName = feederHomeTeam?.abbreviation || feederEvent.home_team;
-              const aName = feederAwayTeam?.abbreviation || feederEvent.away_team;
-              return {
-                name: `Play-in Winner (${feederHomeTeam?.name || feederEvent.home_team} / ${feederAwayTeam?.name || feederEvent.away_team})`,
-                abbreviation: `${hName}/${aName}`,
-              };
-            }
-            return {
-              name: teamData?.name || teamCode,
-              abbreviation: teamData?.abbreviation || teamCode.substring(0, 3).toUpperCase(),
-            };
-          }
-
-          const homeDisplay = getPlayinTeamName(homeTeamCode, homeTeamData);
-          const awayDisplay = getPlayinTeamName(awayTeamCode, awayTeamData);
+          const homeDisplay = {
+            name: homeTeamData?.name || homeTeamCode,
+            abbreviation: homeTeamData?.abbreviation || homeTeamCode.substring(0, 3).toUpperCase(),
+          };
+          const awayDisplay = {
+            name: awayTeamData?.name || awayTeamCode,
+            abbreviation: awayTeamData?.abbreviation || awayTeamCode.substring(0, 3).toUpperCase(),
+          };
 
           const teamA: Team = {
             code: homeTeamCode,

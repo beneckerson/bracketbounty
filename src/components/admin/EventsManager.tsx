@@ -1011,27 +1011,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
               </div>
             </div>
 
-            {firstFourEvents.length > 0 && (
-              <div>
-                <Label>Linked First Four Game (optional)</Label>
-                <Select value={createFeedsInto || 'none'} onValueChange={v => setCreateFeedsInto(v === 'none' ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="No play-in link" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No play-in link</SelectItem>
-                    {firstFourEvents.map(ff => (
-                      <SelectItem key={ff.id} value={ff.id}>
-                        {ff.away_team} / {ff.home_team}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Links a First Four game so its winner feeds into this event.
-                </p>
-              </div>
-            )}
           </div>
 
           <DialogFooter>

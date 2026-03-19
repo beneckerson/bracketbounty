@@ -218,7 +218,7 @@ export default function CreatePool() {
 
   // Calculate allocation status
   const teamCount = values.selectedTeams.length;
-  const effectiveTeamCount = teamCount - firstFourPairCount;
+  const effectiveTeamCount = teamCount;
   const playerCount = values.maxPlayers;
 
   // Auto-sync teamsPerPlayer when the math divides evenly
