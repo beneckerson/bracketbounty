@@ -44,7 +44,6 @@ const ROUND_CONFIGS: Record<string, RoundConfig[]> = {
     { key: 'world_series', name: 'World Series', order: 4 },
   ],
   march_madness: [
-    { key: 'first_four', name: 'First Four', order: 0 },
     { key: 'round_of_64', name: 'Round of 64', order: 1 },
     { key: 'round_of_32', name: 'Round of 32', order: 2 },
     { key: 'sweet_sixteen', name: 'Sweet Sixteen', order: 3 },
