@@ -65,6 +65,22 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
   
   const activeRound = pool.rounds.find(r => r.id === activeRoundId);
   
+  const sortedMatchups = useMemo(() => {
+    if (!activeRound) return [];
+    const statusOrder: Record<string, number> = { final: 0, live: 1, upcoming: 2 };
+    return [...activeRound.matchups].sort((a, b) => {
+      const orderA = statusOrder[a.status] ?? 2;
+      const orderB = statusOrder[b.status] ?? 2;
+      if (orderA !== orderB) return orderA - orderB;
+      if (a.status === 'upcoming' && b.status === 'upcoming') {
+        const timeA = a.startTime ? new Date(a.startTime).getTime() : Infinity;
+        const timeB = b.startTime ? new Date(b.startTime).getTime() : Infinity;
+        return timeA - timeB;
+      }
+      return 0;
+    });
+  }, [activeRound]);
+  
   // Build teams map from all matchups for the OwnedTeamsList
   const teamsMap = useMemo(() => {
     const map: Record<string, Team> = {};
