@@ -409,14 +409,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
-      // If feeds_into is set, link the First Four event to this new R64 event
-      if (createFeedsInto) {
-        await supabase
-          .from('events')
-          .update({ feeds_into_event_id: newEvent.id })
-          .eq('id', createFeedsInto);
-      }
-
       // Also upsert both teams into the teams table
       await supabase.from('teams').upsert([
         { code: homeCode, name: createHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
