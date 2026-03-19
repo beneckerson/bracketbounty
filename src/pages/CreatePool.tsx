@@ -27,8 +27,8 @@ const poolSchema = z.object({
   mode: z.enum(['standard', 'capture']),
   selectedTeams: z.array(z.string()).min(2, 'Select at least 2 teams'),
   buyinAmountCents: z.number().min(0).max(100000),
-  maxPlayers: z.number().min(2).max(32),
-  teamsPerPlayer: z.number().min(1).max(32),
+  maxPlayers: z.number().min(2).max(128),
+  teamsPerPlayer: z.number().min(1).max(128),
   allocationMethod: z.enum(['random', 'draft']),
   payoutNote: z.string().max(500).optional(),
 });
