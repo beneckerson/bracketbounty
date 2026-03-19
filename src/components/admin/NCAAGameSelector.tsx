@@ -10,6 +10,7 @@ import { Loader2, Download, Save, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { toTeamCode, deriveSchoolAbbreviation, hashToColor } from '@/lib/team-utils';
 
 interface OddsApiEvent {
   id: string;
