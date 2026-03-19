@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.fetch-ncaab-events]
 verify_jwt = false
+
+[functions.unresolve-event]
+verify_jwt = false
