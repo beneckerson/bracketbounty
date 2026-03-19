@@ -1337,6 +1337,25 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Un-resolve Confirmation */}
+      <AlertDialog open={!!unresolveEvent} onOpenChange={() => setUnresolveEvent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Un-resolve Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revert <strong>{unresolveEvent?.away_team} @ {unresolveEvent?.home_team}</strong> back to scheduled status, clear its scores, undo any ownership captures, and delete resolution audit entries. The event can then be re-resolved later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unresolving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnresolve} disabled={unresolving}>
+              {unresolving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Un-resolve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
