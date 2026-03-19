@@ -679,7 +679,29 @@ export default function CreatePool() {
                     <Button 
                       type="button" 
                       disabled={isSubmitting}
-                      onClick={() => form.handleSubmit(onSubmit)()}
+                      onClick={async () => {
+                        // Recompute teamsPerPlayer before submit
+                        const currentTeams = form.getValues('selectedTeams');
+                        const currentPlayers = form.getValues('maxPlayers');
+                        if (currentTeams.length > 0 && currentPlayers > 0) {
+                          form.setValue('teamsPerPlayer', Math.floor(currentTeams.length / currentPlayers));
+                        }
+                        
+                        const valid = await form.trigger();
+                        if (!valid) {
+                          const errors = form.formState.errors;
+                          const firstError = Object.entries(errors)[0];
+                          const fieldName = firstError?.[0] || 'form';
+                          const message = (firstError?.[1] as any)?.message || 'Please fix validation errors';
+                          toast({
+                            title: `Validation error: ${fieldName}`,
+                            description: String(message),
+                            variant: 'destructive',
+                          });
+                          return;
+                        }
+                        form.handleSubmit(onSubmit)();
+                      }}
                     >
                       {isSubmitting ? (
                         <>
