@@ -97,17 +97,6 @@ export default function CreatePool() {
         form.setValue('selectedTeams', allTeamCodes);
       }
 
-      // For March Madness, detect First Four pairs
-      if (comp.key === 'march_madness') {
-        const { data: ffEvents } = await supabase
-          .from('events')
-          .select('id')
-          .eq('competition_key', 'march_madness')
-          .eq('round_key', 'first_four');
-        setFirstFourPairCount(ffEvents?.length || 0);
-      } else {
-        setFirstFourPairCount(0);
-      }
     } catch (error) {
       console.error('Error fetching roster teams:', error);
     }
