@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { UserPlus, Shuffle, Trash2, Loader2, X, Crown, Rocket } from 'lucide-react';
+import { UserPlus, Shuffle, Trash2, Loader2, X, Crown, Rocket, Pencil, Check } from 'lucide-react';
 import {
   Drawer,
   DrawerClose,
