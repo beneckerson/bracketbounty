@@ -23,7 +23,10 @@ import type { Team } from '@/lib/types';
 
 const poolSchema = z.object({
   competitionKey: z.string().min(1, 'Please select a competition'),
-  name: z.string().trim().min(1, 'Pool name is required').max(50, 'Pool name must be less than 50 characters'),
+  name: z.string().trim().min(1, 'Pool name is required').max(50, 'Pool name must be less than 50 characters').refine(
+    (val) => /[a-zA-Z]/.test(val),
+    { message: 'Pool name must contain at least one letter' }
+  ),
   mode: z.enum(['standard', 'capture']),
   selectedTeams: z.array(z.string()).min(2, 'Select at least 2 teams'),
   buyinAmountCents: z.number().min(0).max(100000),
