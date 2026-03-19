@@ -1,22 +1,21 @@
 
 
-## Add Pool Delete for All Pool States
+## Make Pool Deletable from Active/Completed State
 
 ### Problem
-The "Manage" button (which contains the delete option) only appears when `pool.status === 'lobby'`. For active or completed pools, commissioners have no way to delete a pool. The database already has `ON DELETE CASCADE` on all child tables (pool_members, pool_matchups, ownership, audit_log, pool_rounds), so deletion will work cleanly.
+For active/completed pools, `Pool.tsx` returns early at line 747 with only the `BracketView` component. The `ManagePoolDrawer` (which contains the delete button) and the "Manage" button are only rendered in the lobby branch below — they never appear for active/completed pools.
 
 ### Solution
-Add a delete button visible to the commissioner on the Pool page regardless of pool status (lobby, active, completed). Keep the existing AlertDialog confirmation pattern.
+Add the ManagePoolDrawer and a "Manage" trigger button into the active/completed pool branch (lines 747-766).
 
 ### Changes
 
 **File: `src/pages/Pool.tsx`**
-- Add a delete pool button (e.g., a trash icon or "Delete Pool" in a dropdown) visible to the commissioner (`isCreator`) for all pool statuses, not just lobby
-- Could be placed near the pool header/status area as a small icon button, or keep the existing "Manage" button visible for all statuses
-- Simplest approach: show the "Manage" button for all statuses when `isCreator`, not just `lobby`. The ManagePoolDrawer already has the delete functionality with confirmation dialog built in
-- For active/completed pools where add-guest and start-pool sections aren't relevant, conditionally hide those sections in the drawer
+- In the active/completed return block (line 747-766), add:
+  - A "Manage" icon button (Settings gear) visible only to `isCreator`, positioned near the top of the bracket view area (e.g., as a floating button or inside a small toolbar above the bracket)
+  - The `ManagePoolDrawer` component (same as already rendered in the lobby branch at line 1007)
+- This reuses the existing drawer which already conditionally hides lobby-only sections and always shows the Danger Zone / Delete Pool
 
-**File: `src/components/pool/ManagePoolDrawer.tsx`**
-- Conditionally show "Add Guest Player" and "Start Pool" sections only when `pool.status === 'lobby'`
-- Always show the "Players" list and "Danger Zone" (delete) section regardless of status
+### Minimal change
+Add ~10 lines to the active/completed branch: a Settings button + the ManagePoolDrawer instance. No other files need changes.
 
