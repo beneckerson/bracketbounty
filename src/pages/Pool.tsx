@@ -262,16 +262,17 @@ export default function Pool() {
       let ownership: OwnershipData[] = [];
       let rawAuditLogs: any[] = [];
 
-      // If guest, use the SECURITY DEFINER function to bypass RLS
-      if (isGuestUser && claimToken) {
+      // If guest/public user, use the SECURITY DEFINER function to bypass RLS
+      if (isGuestUser) {
+        const tokenToUse = claimToken || undefined;
         const { data: bracketData, error: bracketError } = await supabase
           .rpc('get_bracket_data_public', { 
             p_pool_id: poolId, 
-            p_claim_token: claimToken 
+            ...(tokenToUse ? { p_claim_token: tokenToUse } : {})
           });
 
         if (bracketError) {
-          console.error('Error fetching bracket data as guest:', bracketError);
+          console.error('Error fetching bracket data publicly:', bracketError);
           throw bracketError;
         }
         
