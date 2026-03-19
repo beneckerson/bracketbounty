@@ -421,7 +421,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
       setCreateAwayTeam('');
       setCreateRoundKey('round_of_64');
       setCreateStartTime('');
-      setCreateFeedsInto('');
+      
       await fetchEvents();
     } catch (error: any) {
       console.error('Error creating event:', error);

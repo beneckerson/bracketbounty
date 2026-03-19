@@ -593,7 +593,6 @@ export default function CreatePool() {
                         <span className="text-sm text-muted-foreground">👥</span>
                         <span className="text-sm font-medium">
                           {values.maxPlayers} players • {Math.floor(effectiveTeamCount / values.maxPlayers)} team{Math.floor(effectiveTeamCount / values.maxPlayers) !== 1 ? 's' : ''} each
-                          {firstFourPairCount > 0 && ` (${firstFourPairCount} play-in pairs share slots)`}
                         </span>
                       </div>
                       {effectiveTeamCount % values.maxPlayers !== 0 && (
