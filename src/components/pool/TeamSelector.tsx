@@ -229,7 +229,7 @@ export function TeamSelector({ competitionKey, season, selectedTeams, onChange }
               {/* Team color indicator */}
               <div
                 className="w-3 h-8 rounded-sm flex-shrink-0"
-                style={{ backgroundColor: team.color || 'hsl(var(--muted))' }}
+                style={{ backgroundColor: `hsl(var(--${team.color || 'team-gray'}))` }}
               />
 
               {/* Team info */}

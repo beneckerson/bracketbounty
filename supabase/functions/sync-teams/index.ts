@@ -30,23 +30,45 @@ function hashToColor(str: string): string {
 }
 
 // Parse team name from Odds API format
+// Known multi-word mascots to strip correctly
+const MULTI_WORD_MASCOTS = [
+  'Blue Devils', 'Blue Jays', 'Blue Demons', 'Blue Raiders', 'Blue Hens',
+  'Red Raiders', 'Red Storm', 'Red Foxes',
+  'Golden Eagles', 'Golden Bears', 'Golden Gophers', 'Golden Flashes', 'Golden Hurricane',
+  'Horned Frogs', 'Yellow Jackets', 'Tar Heels', 'Scarlet Knights',
+  'Sun Devils', 'Mean Green', 'Runnin Rebels', 'Running Rebels',
+  'Fightin Blue Hens', 'Fighting Irish', 'Fighting Illini', 'Fighting Hawks',
+  'Nittany Lions', 'Crimson Tide', 'Boilermakers',
+  'Demon Deacons', 'Great Danes', 'River Hawks',
+  'Black Bears', 'Black Knights', 'Screaming Eagles',
+  'Mountain Hawks', 'Banana Slugs',
+];
+
 function parseTeamName(fullName: string): { name: string; abbreviation: string; code: string; color: string } {
-  const parts = fullName.split(' ');
-  
-  // Build abbreviation: for multi-word names, use school initials + mascot
-  // e.g. "Boston College Eagles" → "BC Eagles", "TCU Horned Frogs" → "TCU Horned Frogs"
-  let abbreviation = fullName;
-  if (parts.length === 1) {
-    abbreviation = fullName.substring(0, 4).toUpperCase();
-  } else if (parts.length >= 2) {
-    // Drop the last word (mascot) and keep the school name
-    // "BYU Cougars" → "BYU", "Boston College Eagles" → "Boston College"
-    abbreviation = parts.slice(0, -1).join(' ');
-  }
-  
-  // Code is uppercase, no spaces
   const code = fullName.toUpperCase().replace(/\s+/g, '_');
-  
+
+  // Try to match a known multi-word mascot at the end
+  let abbreviation = fullName;
+  const lowerName = fullName;
+  let matched = false;
+  for (const mascot of MULTI_WORD_MASCOTS) {
+    if (lowerName.endsWith(' ' + mascot)) {
+      abbreviation = fullName.slice(0, -(mascot.length + 1));
+      matched = true;
+      break;
+    }
+  }
+
+  if (!matched) {
+    const parts = fullName.split(' ');
+    if (parts.length === 1) {
+      abbreviation = fullName;
+    } else {
+      // Drop last word (single-word mascot)
+      abbreviation = parts.slice(0, -1).join(' ');
+    }
+  }
+
   return {
     name: fullName,
     abbreviation,
