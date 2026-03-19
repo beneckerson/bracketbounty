@@ -55,7 +55,7 @@ export default function CreatePool() {
   const [matchupPreviews, setMatchupPreviews] = useState<MatchupPreviewData[]>([]);
   const [loadingMatchups, setLoadingMatchups] = useState(false);
   const [teamsMap, setTeamsMap] = useState<Record<string, Team>>({});
-  const [firstFourPairCount, setFirstFourPairCount] = useState(0);
+  
   
   const { user } = useAuth();
   const navigate = useNavigate();
