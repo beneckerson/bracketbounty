@@ -193,39 +193,43 @@ export default function Pool() {
         }
       }
 
-      // If no user or RLS blocked, try guest access via claim token
-      if (claimToken) {
+      // If no user or RLS blocked, try guest/public access
+      {
+        const tokenToUse = claimToken || undefined;
+        
         const { data: poolData, error: poolError } = await supabase
           .rpc('get_pool_by_id_public', { 
             p_pool_id: poolId, 
-            p_claim_token: claimToken 
+            ...(tokenToUse ? { p_claim_token: tokenToUse } : {})
           });
 
         if (poolError) {
-          console.error('Error fetching pool as guest:', poolError);
+          console.error('Error fetching pool publicly:', poolError);
           setLoading(false);
           return;
         }
 
         if (poolData && poolData.length > 0) {
           setPool(poolData[0] as PoolData);
-          setIsGuest(true);
+          setIsGuest(!user);
 
           // Get members via public function
           const { data: membersData } = await supabase
             .rpc('get_pool_members_public', { 
               p_pool_id: poolId, 
-              p_claim_token: claimToken 
+              ...(tokenToUse ? { p_claim_token: tokenToUse } : {})
             });
 
           setMembers((membersData || []) as PoolMember[]);
 
-          // Get guest's display name
-          const { data: guestData } = await supabase
-            .rpc('get_pool_for_guest', { p_claim_token: claimToken });
-          
-          if (guestData && guestData.length > 0) {
-            setGuestDisplayName(guestData[0].display_name);
+          // Get guest's display name if we have a claim token
+          if (claimToken) {
+            const { data: guestData } = await supabase
+              .rpc('get_pool_for_guest', { p_claim_token: claimToken });
+            
+            if (guestData && guestData.length > 0) {
+              setGuestDisplayName(guestData[0].display_name);
+            }
           }
           
           // Fetch bracket data for active/completed pools
