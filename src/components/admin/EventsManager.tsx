@@ -121,7 +121,7 @@ function getRoundName(roundKey: string | undefined): string {
     division_series: 'Division Series',
     lcs: 'League Championship',
     world_series: 'World Series',
-    first_four: 'First Four',
+    
     round_of_64: 'Round of 64',
     round_of_32: 'Round of 32',
     sweet_sixteen: 'Sweet Sixteen',
