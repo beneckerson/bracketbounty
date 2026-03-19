@@ -87,8 +87,25 @@ export default function JoinPool() {
       setPool(null);
       setNotFound(true);
     } else {
-      setPool(data[0]);
+      const foundPool = data[0];
+      setPool(foundPool);
       setNotFound(false);
+      
+      // Check if user is already a member of this pool
+      if (user) {
+        const { data: memberData } = await supabase
+          .rpc('get_pool_members_public', { p_pool_id: foundPool.id });
+        
+        const isAlreadyMember = (memberData || []).some(
+          (m: any) => m.user_id === user.id
+        );
+        
+        if (isAlreadyMember) {
+          toast({ title: 'Already a member', description: `Redirecting to ${foundPool.name}...` });
+          navigate(`/pool/${foundPool.id}`);
+          return;
+        }
+      }
     }
     setLookingUp(false);
   };
