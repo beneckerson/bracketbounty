@@ -524,6 +524,53 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setDeleting(false);
   }
 
+  function openSpreadOverride(event: Event) {
+    setSpreadEvent(event);
+    setSpreadHome('');
+    setSpreadAway('');
+  }
+
+  async function handleSpreadOverride() {
+    if (!spreadEvent) return;
+    const home = parseFloat(spreadHome);
+    const away = parseFloat(spreadAway);
+    if (isNaN(home) || isNaN(away)) {
+      toast.error('Please enter valid spread values');
+      return;
+    }
+
+    setSpreadSaving(true);
+    try {
+      const payload = {
+        home_spread: home,
+        away_spread: away,
+        home_team: spreadEvent.home_team,
+        away_team: spreadEvent.away_team,
+        fetched_at: new Date().toISOString(),
+        override_note: 'Admin manual override',
+      };
+
+      // Upsert line with admin override
+      const { error } = await supabase
+        .from('lines')
+        .upsert({
+          event_id: spreadEvent.id,
+          source: 'admin_override',
+          book: null,
+          locked_line_payload: payload,
+          locked_at: new Date().toISOString(),
+        }, { onConflict: 'event_id' });
+
+      if (error) throw error;
+
+      toast.success(`Spread override saved for ${spreadEvent.away_team} @ ${spreadEvent.home_team}`);
+      setSpreadEvent(null);
+    } catch (error: any) {
+      console.error('Error saving spread override:', error);
+      toast.error(error.message || 'Failed to save spread override');
+    }
+    setSpreadSaving(false);
+  }
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
