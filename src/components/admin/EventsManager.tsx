@@ -174,6 +174,13 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   // Delete confirmation state
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Spread override state
+  const [spreadEvent, setSpreadEvent] = useState<Event | null>(null);
+  const [spreadHome, setSpreadHome] = useState('');
+  const [spreadAway, setSpreadAway] = useState('');
+  const [spreadSaving, setSpreadSaving] = useState(false);
+
   // Fetch roster teams when create or edit dialog opens
   const isMarchMadness = competitionKey === 'march_madness';
   
