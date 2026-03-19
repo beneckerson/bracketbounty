@@ -1,18 +1,22 @@
 
 
-## Plan: Redirect Full Pools from Invite Link to Pool View
+## Fix: Eliminate Teams From Already-Resolved UPSET Matchups
 
-### Change
-**`src/pages/JoinPool.tsx`** — In the `lookupPool` function, after detecting the pool is full, automatically redirect to `/pool/{id}` instead of showing the "This pool is full" error message.
+### What's happening
+The UPSET bug fix you approved earlier is deployed, so **future** resolutions will correctly eliminate teams. But the 4 matchups in "Gambler's Anonymous" were resolved **before** the fix, so WISCONSIN_BADGERS and OHIO_STATE_BUCKEYES (both owned by Rich) still sit in the ownership table despite losing.
 
-Current behavior: User sees a dead-end "This pool is full" message.
-New behavior: User lands on the read-only pool view (which we just made public).
+### Solution
+You need to **re-resolve** the two affected events using the admin Events Manager (Undo → Resolve). The corrected edge function code will then properly delete those ownership records.
 
-The redirect happens right after the pool lookup completes and `isFull` is determined. We already have the `pool.id` at that point, so it's a simple `navigate(`/pool/${foundPool.id}`)` with a toast saying "This pool is full — viewing in read-only mode."
+The two event IDs are:
+- `f40315a3-283b-40ef-8719-bddace9d5fac` (Wisconsin vs High Point)
+- `867fd15f-420c-4a51-9bdf-f362c1e3f4fd` (Ohio State vs TCU)
 
-This also covers the case where an existing member clicks the invite link again — they'll either get redirected as an existing member (already implemented) or see the pool read-only.
+**No code changes are needed.** The fix is already live. Just re-resolve those two events from the admin panel.
 
-### What stays the same
-- If the pool is NOT full, the join form works as before
-- The `/pool/{id}` page already supports public read-only access from the previous change
+### Steps
+1. Go to the admin Events Manager
+2. Find the Wisconsin vs High Point event → click **Undo** → then **Resolve** again
+3. Find the Ohio State vs TCU event → click **Undo** → then **Resolve** again
+4. Refresh the pool page — WISCONSIN_BADGERS and OHIO_STATE_BUCKEYES should disappear from Rich's owned teams list
 
