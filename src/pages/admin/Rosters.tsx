@@ -11,11 +11,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2, Users, Calendar } from 'lucide-react';
+import { Shield, ArrowLeft, AlertCircle, Plus, RefreshCw, Loader2, Users, Calendar, Trash2 } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 import { toast } from 'sonner';
 
@@ -38,6 +39,66 @@ export default function Rosters() {
   const [newSeasonValue, setNewSeasonValue] = useState('');
   const [creatingNewSeason, setCreatingNewSeason] = useState(false);
   const [syncingTeams, setSyncingTeams] = useState(false);
+  const [deletingRoster, setDeletingRoster] = useState(false);
+  const [deletingEvents, setDeletingEvents] = useState(false);
+
+  const handleDeleteRoster = async () => {
+    if (!selectedCompetition || !selectedSeason) return;
+    setDeletingRoster(true);
+    const { error } = await supabase
+      .from('competition_rosters')
+      .delete()
+      .eq('competition_key', selectedCompetition)
+      .eq('season', selectedSeason);
+    if (error) {
+      toast.error('Failed to delete roster: ' + error.message);
+    } else {
+      toast.success('All roster teams deleted');
+    }
+    setDeletingRoster(false);
+  };
+
+  const handleDeleteEvents = async () => {
+    if (!selectedCompetition) return;
+    setDeletingEvents(true);
+    // First check for events linked to pool_matchups
+    const { data: events } = await supabase
+      .from('events')
+      .select('id')
+      .eq('competition_key', selectedCompetition);
+    
+    if (events && events.length > 0) {
+      const eventIds = events.map(e => e.id);
+      const { data: linkedMatchups } = await supabase
+        .from('pool_matchups')
+        .select('id')
+        .in('event_id', eventIds)
+        .limit(1);
+      
+      if (linkedMatchups && linkedMatchups.length > 0) {
+        toast.error('Cannot delete events — some are linked to active pool matchups. Remove those pools first.');
+        setDeletingEvents(false);
+        return;
+      }
+
+      // Delete lines first (FK dependency)
+      await supabase
+        .from('lines')
+        .delete()
+        .in('event_id', eventIds);
+    }
+
+    const { error } = await supabase
+      .from('events')
+      .delete()
+      .eq('competition_key', selectedCompetition);
+    if (error) {
+      toast.error('Failed to delete events: ' + error.message);
+    } else {
+      toast.success('All events deleted');
+    }
+    setDeletingEvents(false);
+  };
 
   // Check if current user is admin
   useEffect(() => {
@@ -422,6 +483,70 @@ export default function Rosters() {
             <Card className="border-dashed">
               <CardContent className="py-12 text-center text-muted-foreground">
                 Select a competition and season above to manage its roster and events
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Danger Zone */}
+          {selectedCompetition && selectedSeason && (
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="text-lg text-destructive flex items-center gap-2">
+                  <Trash2 className="h-5 w-5" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Bulk delete operations for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name} — {selectedSeason}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-4">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={deletingRoster}>
+                      {deletingRoster && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete All Roster Teams
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete entire roster?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all teams from the {selectedSeason} roster for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name}. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteRoster} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete All Teams
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={deletingEvents}>
+                      {deletingEvents && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete All Events & Lines
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete all events?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all events and their associated lines for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name}. Events linked to active pool matchups cannot be deleted. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteEvents} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete All Events
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </CardContent>
             </Card>
           )}
