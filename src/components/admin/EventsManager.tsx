@@ -1247,6 +1247,59 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Spread Override Dialog */}
+      <Dialog open={!!spreadEvent} onOpenChange={(open) => !open && setSpreadEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Override Spread</DialogTitle>
+            <DialogDescription>
+              {spreadEvent && (
+                <span className="font-medium text-foreground">
+                  {spreadEvent.away_team} @ {spreadEvent.home_team}
+                </span>
+              )}
+              <br />
+              <span className="text-xs">Set or correct the locked spread for this game. This will override any existing line.</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div>
+              <Label htmlFor="spread-away">{spreadEvent?.away_team} Spread</Label>
+              <Input
+                id="spread-away"
+                type="number"
+                step="0.5"
+                value={spreadAway}
+                onChange={(e) => setSpreadAway(e.target.value)}
+                placeholder="e.g. +3.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="spread-home">{spreadEvent?.home_team} Spread</Label>
+              <Input
+                id="spread-home"
+                type="number"
+                step="0.5"
+                value={spreadHome}
+                onChange={(e) => setSpreadHome(e.target.value)}
+                placeholder="e.g. -3.5"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSpreadEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSpreadOverride} disabled={spreadSaving}>
+              {spreadSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Override
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
