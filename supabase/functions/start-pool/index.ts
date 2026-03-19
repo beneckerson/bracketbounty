@@ -163,42 +163,7 @@ Deno.serve(async (req) => {
     console.log(`Distributing ${selectedTeams.length} teams among ${members.length} members`);
 
     // 4. Randomly assign teams to members
-    // For March Madness: pair First Four teams together as single slots
-    let firstFourPairs: Array<[string, string]> = [];
-    let slotsToAssign: Array<string | [string, string]> = [];
-
-    if (pool.competition_key === 'march_madness') {
-      // Fetch First Four events to identify paired teams
-      const { data: ffEvents } = await supabase
-        .from('events')
-        .select('home_team, away_team')
-        .eq('competition_key', 'march_madness')
-        .eq('round_key', 'first_four');
-
-      const pairedTeamCodes = new Set<string>();
-      if (ffEvents && ffEvents.length > 0) {
-        for (const ff of ffEvents) {
-          if (selectedTeams.includes(ff.home_team) && selectedTeams.includes(ff.away_team)) {
-            firstFourPairs.push([ff.home_team, ff.away_team]);
-            pairedTeamCodes.add(ff.home_team);
-            pairedTeamCodes.add(ff.away_team);
-          }
-        }
-      }
-      console.log(`Found ${firstFourPairs.length} First Four pairs`);
-
-      // Build slots: unpaired teams as single strings, paired teams as tuples
-      for (const tc of selectedTeams) {
-        if (!pairedTeamCodes.has(tc)) {
-          slotsToAssign.push(tc);
-        }
-      }
-      for (const pair of firstFourPairs) {
-        slotsToAssign.push(pair);
-      }
-    } else {
-      slotsToAssign = [...selectedTeams];
-    }
+    const slotsToAssign: string[] = [...selectedTeams];
 
     // Shuffle slots
     const shuffledSlots = [...slotsToAssign].sort(() => Math.random() - 0.5);
