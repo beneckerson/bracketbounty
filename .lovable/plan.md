@@ -1,70 +1,68 @@
 
-Goal: fix the blocked “Create Pool” action first, then add admin quality-control overrides for team name/abbreviation/color so bad imports can be corrected safely.
+Goal: fix the blocked “Create Pool” action first (no-op on Review → Create Pool), then harden admin team quality controls so name/abbreviation/color are consistently correct.
 
-What I found from the current code:
-- `CreatePool` can fail silently at submit time because `handleSubmit` has no invalid callback and several validated fields are hidden (`selectedTeams`, `teamsPerPlayer`, `competitionKey`), so users can click “Create Pool” and see no actionable error.
-- Create flow currently surfaces only a generic failure toast on backend errors, which hides the real cause.
-- Team metadata quality can degrade from admin ingestion paths:
-  - `RosterEditor.addManualTeam()` writes `abbreviation: code` (UPPER_SNAKE_CASE).
-  - `EventsManager` create/edit upserts teams with `abbreviation: CODE`.
-- There is no admin UI to override/fix incorrect team display metadata.
-- Admin roster color swatches still use raw `team.color` as CSS color in places, which is incorrect for token values like `team-orange`.
+What the screenshot/code indicates:
+- The DevTools “label/id” issues are accessibility warnings, not the core blocker.
+- `CreatePool` still uses a custom click path (`trigger()` + manual `handleSubmit`) and a `form onSubmit={preventDefault}`, which makes failures hard to surface reliably.
+- There is a schema/UI mismatch: `maxPlayers` input allows competition-specific values (up to 64 for March Madness), but Zod caps at 32.
+- `onSubmit` can still silently return when `selectedCompetition` or `user` is missing.
+- Admin override exists in roster editor, but ingestion consistency is incomplete (`RosterEditor.syncFromEvents` and `NCAAGameSelector` still have local/raw abbreviation paths).
 
 Implementation plan:
 
-1) Make Create Pool failure explicit and debuggable (highest priority)
-- Update `src/pages/CreatePool.tsx` submit flow:
-  - Replace direct `form.handleSubmit(onSubmit)()` click with a wrapper that runs `form.trigger()` first.
-  - Add invalid-submit handler to show a clear toast with first blocking field/error.
-  - Recompute `teamsPerPlayer` immediately before submit from selected teams/player count.
-  - Disable or block submit with clear messaging when required hidden fields are invalid.
-- Improve backend error visibility:
-  - In catch block, include real error message (when safe) so “nothing happens” becomes actionable.
+1) Make Review submit deterministic (remove silent no-op path)
+- Refactor `src/pages/CreatePool.tsx` to use canonical form submit:
+  - `form` uses `onSubmit={form.handleSubmit(onValidSubmit, onInvalidSubmit)}`
+  - Create button becomes `type="submit"` (no manual `trigger()` wrapper)
+- Remove `onSubmit={(e)=>e.preventDefault()}` anti-pattern.
+- Add explicit invalid handler that always surfaces:
+  - persistent inline error banner near Create button
+  - destructive toast with first failing field + readable message
+- Add explicit guard feedback in valid submit:
+  - if `!user` or `!selectedCompetition`, show error toast/banner (no silent return)
 
-2) Tighten step validation before reaching Review
-- In `CreatePool.tsx`, validate step-specific requirements on Continue (especially player/team math) so users don’t reach Review with invalid hidden state.
-- Add a compact “preflight” warning panel on Review listing unresolved validation issues.
+2) Fix validation contract mismatches causing hidden blocks
+- Update schema in `CreatePool.tsx`:
+  - raise `maxPlayers` cap to match supported competitions (or validate dynamically by selected competition)
+  - adjust `teamsPerPlayer` upper bound to safe range for March Madness scenarios
+- Before submit, compute and set `teamsPerPlayer` from current team/player values and validate it against schema/business rules.
+- Add step-3 validation gate (players/buy-in step) so impossible values are blocked before Review.
 
-3) Add admin override controls for team metadata (name/abbreviation/color)
-- Extend `src/components/admin/RosterEditor.tsx`:
-  - Add per-team “Edit” action/dialog with fields:
-    - Display name
-    - Abbreviation
-    - Color token (team palette)
-  - Save directly to `teams` table (admin-only via existing RLS).
-  - Refresh local roster/teams state after save.
-- Keep overrides on the roster-admin surface (as requested), not buried elsewhere.
+3) Improve user-visible diagnostics on Review step
+- Add compact “preflight checklist” above Create button showing pass/fail for:
+  - competition selected
+  - pool name present
+  - players valid for competition
+  - selected teams count
+  - teams-per-player computable
+- Disable Create button with a short reason when preflight fails, instead of allowing a no-op click.
 
-4) Prevent future bad team metadata at ingestion points
-- Update admin creation/import paths to stop writing abbreviations as raw codes:
-  - `RosterEditor.addManualTeam()`
-  - `EventsManager` manual create/edit team upserts
-  - `NCAAGameSelector` abbreviation derivation path
-- Standardize on a shared helper for:
-  - `toTeamCode(name)`
-  - `deriveSchoolAbbreviation(name)` (handles multi-word mascots)
-  - `hashToColor(code)` fallback
+4) Complete admin quality-control coverage (requested override flow)
+- Keep current roster-level Edit dialog (name/abbreviation/color), and add stricter validation:
+  - non-empty name/abbreviation
+  - abbreviation length cap
+  - color must be from approved token list
+- Ensure all ingestion paths use shared helpers in `src/lib/team-utils.ts`:
+  - `RosterEditor.syncFromEvents` (currently still `abbreviation: code`)
+  - `NCAAGameSelector` replace local `toAbbreviation/hashToColor` with shared `deriveSchoolAbbreviation/hashToColor`
+- Keep color rendering through shared `resolveTeamColor` anywhere inline styles are used.
 
-5) Fix color rendering consistency in admin + pool selectors
-- Add shared resolver utility for token-based colors (`team-*`) to CSS values.
-- Apply to:
-  - `RosterEditor` swatches (both roster rows and add-team chips)
-  - Any other inline style consumers that currently pass token strings directly.
-- Keep `TeamBar` token class mapping behavior for bracket pills.
+5) Optional one-time data cleanup for existing bad metadata
+- Add migration to normalize legacy team rows where abbreviation is code-like or mascot-only, and backfill invalid color tokens to known palette.
+- Scope to affected league(s), preserving manual admin overrides when already set.
 
-6) One-time quality cleanup migration for existing bad rows
-- Add a migration to normalize legacy rows where abbreviation is code-like (underscore/all-caps patterns), prioritizing school-name abbreviation derivation.
-- Backfill invalid/missing colors to valid palette tokens.
-- No RLS policy changes needed (existing `teams` admin policy already supports this).
+QA plan (post-implementation):
+- Reproduce exact user flow: March Madness → all 4 steps → Create Pool.
+- Verify one of two outcomes always occurs on click:
+  - Success dialog opens with invite link, OR
+  - Clear inline + toast error explains exactly what to fix.
+- Test edge values:
+  - high player counts, empty/edited player input, non-divisible allocations.
+- Admin QA:
+  - edit one team name/abbr/color in roster, confirm changes render in review matchups and team pills.
+  - run event sync paths and confirm no new UPPER_SNAKE abbreviations are introduced.
 
-7) QA and verification checklist
-- Reproduce original path: create pool with March Madness setup (32/64 selected teams, 2 players) and verify Create Pool opens success dialog.
-- Force invalid state and confirm submit now shows explicit reason (no silent no-op).
-- In admin roster, override one team’s name/abbreviation/color and verify it reflects in:
-  - Create Pool review matchups
-  - Pool bracket/team pills
-- Regression-check manual event/team creation to ensure no new UPPER_SNAKE abbreviations are introduced.
-
-Technical details
-- Primary files: `src/pages/CreatePool.tsx`, `src/components/admin/RosterEditor.tsx`, `src/components/admin/EventsManager.tsx`, `src/components/admin/NCAAGameSelector.tsx`, plus a new shared team-format utility and one SQL migration.
-- Backend security model remains intact: team metadata edits stay admin-restricted through existing backend policies.
+Technical details:
+- Primary files: `src/pages/CreatePool.tsx`, `src/components/admin/RosterEditor.tsx`, `src/components/admin/NCAAGameSelector.tsx`, `src/lib/team-utils.ts`.
+- No auth model changes required.
+- No RLS policy changes expected for this fix set.
