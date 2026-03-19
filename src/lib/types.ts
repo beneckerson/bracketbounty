@@ -31,11 +31,18 @@ export interface OwnedTeam {
   acquiredAt: Date;
 }
 
+export interface LostTeam {
+  teamCode: string;
+  lostVia: 'eliminated' | 'captured';
+  fromMatchupId?: string;
+}
+
 export interface PoolMember {
   id: string;
   participant: Participant;
   role: MemberRole;
   ownedTeams: OwnedTeam[];
+  lostTeams: LostTeam[];
 }
 
 export interface MatchupTeamEntry {

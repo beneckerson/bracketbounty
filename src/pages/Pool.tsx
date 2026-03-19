@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
 import { transformAuditLogs } from '@/lib/audit-utils';
-import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, AuditLogEntry } from '@/lib/types';
+import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, LostTeam, AuditLogEntry } from '@/lib/types';
 interface PoolData {
   id: string;
   name: string;
