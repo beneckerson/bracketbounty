@@ -170,12 +170,12 @@ export function BracketView({ pool, auditLogs, oddsLastUpdated }: BracketViewPro
                 {activeRound?.name}
               </h2>
               <span className="text-sm text-muted-foreground">
-                {activeRound?.matchups.length} matchups
+                {sortedMatchups.length} matchups
               </span>
             </div>
             
             <div className="space-y-4">
-              {activeRound?.matchups.map((matchup, index) => (
+              {sortedMatchups.map((matchup, index) => (
                 <div 
                   key={matchup.id}
                   className="animate-fade-in"
