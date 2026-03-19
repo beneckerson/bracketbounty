@@ -344,15 +344,46 @@ export function ManagePoolDrawer({
                       key={member.id}
                       className="flex items-center justify-between p-2 bg-muted/50 rounded-lg"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
                           <span className="text-xs font-medium text-primary">
                             {member.display_name.charAt(0).toUpperCase()}
                           </span>
                         </div>
-                        <span className="text-sm">{member.display_name}</span>
-                        {!member.is_claimed && (
-                          <span className="text-xs text-muted-foreground">(Guest)</span>
+                        {editingMemberId === member.id ? (
+                          <>
+                            <Input
+                              className="h-7 text-sm"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameMember(member.id);
+                                if (e.key === 'Escape') setEditingMemberId(null);
+                              }}
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => handleRenameMember(member.id)}>
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setEditingMemberId(null)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm truncate">{member.display_name}</span>
+                            {!member.is_claimed && (
+                              <span className="text-xs text-muted-foreground">(Guest)</span>
+                            )}
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                              onClick={() => { setEditingMemberId(member.id); setEditingName(member.display_name); }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </>
                         )}
                       </div>
                       <Button
