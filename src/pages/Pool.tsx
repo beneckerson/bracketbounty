@@ -327,23 +327,6 @@ export default function Pool() {
         events = (eventsData || []) as EventData[];
       }
 
-      // Fetch First Four feeder events (events that feed INTO these events)
-      let feederEvents: EventData[] = [];
-      if (poolData.competition_key === 'march_madness' && eventIds.length > 0) {
-        const { data: feeders } = await supabase
-          .from('events')
-          .select('*')
-          .filter('feeds_into_event_id', 'in', `(${eventIds.join(',')})`);
-        feederEvents = (feeders || []) as EventData[];
-      }
-
-      // Build feeder map: target_event_id -> feeder_event
-      const feederMap: Record<string, EventData> = {};
-      feederEvents.forEach(f => {
-        if (f.feeds_into_event_id) {
-          feederMap[f.feeds_into_event_id] = f;
-        }
-      });
 
       // Fetch lines for spreads (now publicly accessible)
       let lines: LineData[] = [];
