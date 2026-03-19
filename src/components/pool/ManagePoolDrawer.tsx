@@ -117,6 +117,27 @@ export function ManagePoolDrawer({
     }
   };
 
+  const handleRenameMember = async (memberId: string) => {
+    const trimmed = editingName.trim();
+    if (!trimmed) {
+      toast.error('Name cannot be empty');
+      return;
+    }
+    try {
+      const { error } = await supabase
+        .from('pool_members')
+        .update({ display_name: trimmed })
+        .eq('id', memberId);
+      if (error) throw error;
+      toast.success(`Renamed to ${trimmed}`);
+      setEditingMemberId(null);
+      onMembersChange();
+    } catch (error: any) {
+      console.error('Error renaming member:', error);
+      toast.error(error?.message || 'Failed to rename');
+    }
+  };
+
   const handleRemoveMember = async (memberId: string, memberName: string) => {
     setRemovingMemberId(memberId);
     try {
