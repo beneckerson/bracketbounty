@@ -99,23 +99,23 @@ export const demoCapturePool: Pool = {
     // Ben → IND - Covered in QF, covered in SF → Still Active with IND
     { id: 'm1', participant: demoParticipants[0], role: 'creator', ownedTeams: [
       { teamCode: 'IND', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
-    ]},
+    ], lostTeams: []},
     // Sean → OSU - Failed to cover in QF vs Miami → Eliminated
-    { id: 'm2', participant: demoParticipants[1], role: 'member', ownedTeams: [] },
+    { id: 'm2', participant: demoParticipants[1], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'OSU', lostVia: 'eliminated' }] },
     // Rich → UGA - Failed to cover in QF vs Ole Miss → Eliminated
-    { id: 'm3', participant: demoParticipants[2], role: 'member', ownedTeams: [] },
+    { id: 'm3', participant: demoParticipants[2], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'UGA', lostVia: 'captured' }] },
     // Johnson → TTU - Failed to cover in QF vs Oregon → Eliminated
-    { id: 'm4', participant: demoParticipants[3], role: 'member', ownedTeams: [] },
+    { id: 'm4', participant: demoParticipants[3], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'TTU', lostVia: 'eliminated' }] },
     // Skilone → ORE - Covered in QF, failed to cover in SF vs Indiana → Eliminated
-    { id: 'm5', participant: demoParticipants[4], role: 'member', ownedTeams: [] },
+    { id: 'm5', participant: demoParticipants[4], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'ORE', lostVia: 'captured' }] },
     // JMB → MISS - Covered (captured) in QF, failed to cover in SF vs Miami → Eliminated
-    { id: 'm6', participant: demoParticipants[5], role: 'member', ownedTeams: [] },
+    { id: 'm6', participant: demoParticipants[5], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'MISS', lostVia: 'eliminated' }] },
     // B Hart → BAMA - Failed to cover in QF vs Indiana → Eliminated
-    { id: 'm7', participant: demoParticipants[6], role: 'member', ownedTeams: [] },
+    { id: 'm7', participant: demoParticipants[6], role: 'member', ownedTeams: [], lostTeams: [{ teamCode: 'BAMA', lostVia: 'eliminated' }] },
     // Kool → MIAMI - Covered (captured) in QF, covered (captured) in SF → Still Active with MIAMI
     { id: 'm8', participant: demoParticipants[7], role: 'member', ownedTeams: [
       { teamCode: 'MIAMI', acquiredVia: 'initial', acquiredAt: new Date('2025-12-15') },
-    ]},
+    ], lostTeams: []},
   ],
   rounds: [
     {

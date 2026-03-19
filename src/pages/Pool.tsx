@@ -14,7 +14,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { getCompetition } from '@/lib/competitions';
 import { transformAuditLogs } from '@/lib/audit-utils';
-import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, AuditLogEntry } from '@/lib/types';
+import type { Pool as PoolType, PoolMember as PoolMemberType, Round, Matchup, Team, OwnedTeam, LostTeam, AuditLogEntry } from '@/lib/types';
 interface PoolData {
   id: string;
   name: string;
@@ -479,6 +479,44 @@ export default function Pool() {
       });
 
       // Build pool members with owned teams
+      // Derive lost teams from final matchups
+      const lostTeamsByMember: Record<string, LostTeam[]> = {};
+      const currentOwnedTeamCodes = new Set<string>(ownership.map(o => o.team_code));
+      
+      transformedRounds.forEach(round => {
+        round.matchups.forEach(matchup => {
+          if (matchup.status !== 'final' || !matchup.winnerId) return;
+          
+          // Identify the losing member
+          const loserIdA = matchup.teamA.ownerId !== matchup.winnerId ? matchup.teamA.ownerId : null;
+          const loserIdB = matchup.teamB.ownerId !== matchup.winnerId ? matchup.teamB.ownerId : null;
+          const loserId = loserIdA || loserIdB;
+          if (!loserId) return;
+          
+          // The losing team code
+          const loserTeamCode = loserId === matchup.teamA.ownerId 
+            ? matchup.teamA.team.code 
+            : matchup.teamB.team.code;
+          
+          if (!loserTeamCode) return;
+          
+          // Determine if captured or eliminated
+          const isCaptureMode = poolData.mode === 'capture';
+          const winnerGainedTeam = isCaptureMode && matchup.decidedBy;
+          const lostVia: 'eliminated' | 'captured' = winnerGainedTeam ? 'captured' : 'eliminated';
+          
+          if (!lostTeamsByMember[loserId]) lostTeamsByMember[loserId] = [];
+          // Avoid duplicates
+          if (!lostTeamsByMember[loserId].some(lt => lt.teamCode === loserTeamCode)) {
+            lostTeamsByMember[loserId].push({
+              teamCode: loserTeamCode,
+              lostVia,
+              fromMatchupId: matchup.id,
+            });
+          }
+        });
+      });
+
       const transformedMembers: PoolMemberType[] = membersData.map(m => {
         const memberOwnership = ownershipByMember[m.id] || [];
         const ownedTeams: OwnedTeam[] = memberOwnership.map(o => ({
@@ -498,6 +536,7 @@ export default function Pool() {
           },
           role: m.role,
           ownedTeams,
+          lostTeams: lostTeamsByMember[m.id] || [],
         };
       });
 
