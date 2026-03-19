@@ -388,14 +388,32 @@ serve(async (req) => {
             // Check if line is already locked before updating
             const { data: existingLine } = await supabase
               .from('lines')
-              .select('locked_at')
+              .select('id, locked_at, locked_line_payload')
               .eq('event_id', upsertedEvent.id)
               .maybeSingle();
 
-            // Only update line if not already locked
+            // Self-healing lock: if game has started and line exists but isn't locked, lock it now
+            const gameStarted = upsertedEvent.start_time && new Date(upsertedEvent.start_time) <= new Date();
+
             if (existingLine?.locked_at) {
               console.log(`Line for event ${upsertedEvent.id} is already locked, skipping update`);
               syncedLines.push({ event_id: upsertedEvent.id, skipped: true, reason: 'already_locked' });
+            } else if (gameStarted && existingLine && existingLine.locked_line_payload) {
+              // Game started but line wasn't locked yet — lock the existing spread instead of overwriting
+              console.log(`Game started for event ${upsertedEvent.id}, auto-locking existing line`);
+              const { error: lockError } = await supabase
+                .from('lines')
+                .update({ locked_at: new Date().toISOString() })
+                .eq('id', existingLine.id);
+              if (lockError) {
+                console.error('Error auto-locking line:', lockError);
+              } else {
+                syncedLines.push({ event_id: upsertedEvent.id, skipped: true, reason: 'auto_locked_at_sync' });
+              }
+            } else if (gameStarted && !existingLine) {
+              // Game started with no prior line — nothing to lock, skip
+              console.log(`Game started for event ${upsertedEvent.id} but no existing line to lock, skipping`);
+              syncedLines.push({ event_id: upsertedEvent.id, skipped: true, reason: 'no_line_to_lock' });
             } else {
               const lineData = {
                 event_id: upsertedEvent.id,

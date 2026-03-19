@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2 } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Settings2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -174,6 +174,13 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   // Delete confirmation state
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Spread override state
+  const [spreadEvent, setSpreadEvent] = useState<Event | null>(null);
+  const [spreadHome, setSpreadHome] = useState('');
+  const [spreadAway, setSpreadAway] = useState('');
+  const [spreadSaving, setSpreadSaving] = useState(false);
+
   // Fetch roster teams when create or edit dialog opens
   const isMarchMadness = competitionKey === 'march_madness';
   
@@ -517,6 +524,53 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setDeleting(false);
   }
 
+  function openSpreadOverride(event: Event) {
+    setSpreadEvent(event);
+    setSpreadHome('');
+    setSpreadAway('');
+  }
+
+  async function handleSpreadOverride() {
+    if (!spreadEvent) return;
+    const home = parseFloat(spreadHome);
+    const away = parseFloat(spreadAway);
+    if (isNaN(home) || isNaN(away)) {
+      toast.error('Please enter valid spread values');
+      return;
+    }
+
+    setSpreadSaving(true);
+    try {
+      const payload = {
+        home_spread: home,
+        away_spread: away,
+        home_team: spreadEvent.home_team,
+        away_team: spreadEvent.away_team,
+        fetched_at: new Date().toISOString(),
+        override_note: 'Admin manual override',
+      };
+
+      // Upsert line with admin override
+      const { error } = await supabase
+        .from('lines')
+        .upsert({
+          event_id: spreadEvent.id,
+          source: 'admin_override',
+          book: null,
+          locked_line_payload: payload,
+          locked_at: new Date().toISOString(),
+        }, { onConflict: 'event_id' });
+
+      if (error) throw error;
+
+      toast.success(`Spread override saved for ${spreadEvent.away_team} @ ${spreadEvent.home_team}`);
+      setSpreadEvent(null);
+    } catch (error: any) {
+      console.error('Error saving spread override:', error);
+      toast.error(error.message || 'Failed to save spread override');
+    }
+    setSpreadSaving(false);
+  }
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -674,9 +728,15 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button size="sm" onClick={() => openResolveDialog(event)}>
-                                  Resolve
-                                </Button>
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="outline" size="sm" onClick={() => openSpreadOverride(event)} title="Override spread">
+                                    <Settings2 className="h-3.5 w-3.5 mr-1" />
+                                    Spread
+                                  </Button>
+                                  <Button size="sm" onClick={() => openResolveDialog(event)}>
+                                    Resolve
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
@@ -754,6 +814,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSpreadOverride(event)} title="Override spread">
+                                    <Settings2 className="h-3.5 w-3.5" />
+                                  </Button>
                                   {event.status === 'scheduled' && (
                                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(event)} title="Edit event">
                                       <Pencil className="h-3.5 w-3.5" />
@@ -1184,6 +1247,59 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Spread Override Dialog */}
+      <Dialog open={!!spreadEvent} onOpenChange={(open) => !open && setSpreadEvent(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Override Spread</DialogTitle>
+            <DialogDescription>
+              {spreadEvent && (
+                <span className="font-medium text-foreground">
+                  {spreadEvent.away_team} @ {spreadEvent.home_team}
+                </span>
+              )}
+              <br />
+              <span className="text-xs">Set or correct the locked spread for this game. This will override any existing line.</span>
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div>
+              <Label htmlFor="spread-away">{spreadEvent?.away_team} Spread</Label>
+              <Input
+                id="spread-away"
+                type="number"
+                step="0.5"
+                value={spreadAway}
+                onChange={(e) => setSpreadAway(e.target.value)}
+                placeholder="e.g. +3.5"
+              />
+            </div>
+            <div>
+              <Label htmlFor="spread-home">{spreadEvent?.home_team} Spread</Label>
+              <Input
+                id="spread-home"
+                type="number"
+                step="0.5"
+                value={spreadHome}
+                onChange={(e) => setSpreadHome(e.target.value)}
+                placeholder="e.g. -3.5"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSpreadEvent(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSpreadOverride} disabled={spreadSaving}>
+              {spreadSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Save Override
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
