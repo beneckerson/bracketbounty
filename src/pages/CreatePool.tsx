@@ -478,7 +478,6 @@ export default function CreatePool() {
                             {effectiveTeamCount > 0 && playerCount > 0 && (
                               <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
                                 {Math.floor(effectiveTeamCount / playerCount)} team{Math.floor(effectiveTeamCount / playerCount) !== 1 ? 's' : ''} each
-                                {firstFourPairCount > 0 && ` (${effectiveTeamCount} slots)`}
                               </span>
                             )}
                           </div>
@@ -492,7 +491,7 @@ export default function CreatePool() {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            {teamCount} teams selected{firstFourPairCount > 0 ? ` (${firstFourPairCount} First Four pairs = ${effectiveTeamCount} ownership slots)` : ''}
+                            {teamCount} teams selected
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
