@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Settings2 } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Settings2, Undo2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -180,6 +180,10 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [spreadHome, setSpreadHome] = useState('');
   const [spreadAway, setSpreadAway] = useState('');
   const [spreadSaving, setSpreadSaving] = useState(false);
+
+  // Un-resolve state
+  const [unresolveEvent, setUnresolveEvent] = useState<Event | null>(null);
+  const [unresolving, setUnresolving] = useState(false);
 
   // Fetch roster teams when create or edit dialog opens
   const isMarchMadness = competitionKey === 'march_madness';
@@ -530,6 +534,28 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setSpreadAway('');
   }
 
+  async function handleUnresolve() {
+    if (!unresolveEvent) return;
+    setUnresolving(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('unresolve-event', {
+        body: { event_id: unresolveEvent.id },
+      });
+      if (error) throw error;
+      if (data.success) {
+        toast.success(`Un-resolved ${data.matchups_unresolved} matchup(s) for ${data.away_team} @ ${data.home_team}`);
+        setUnresolveEvent(null);
+        fetchEvents();
+      } else {
+        throw new Error(data.error || 'Failed to un-resolve event');
+      }
+    } catch (error: any) {
+      console.error('Error un-resolving event:', error);
+      toast.error(error.message || 'Failed to un-resolve event');
+    }
+    setUnresolving(false);
+  }
+
   async function handleSpreadOverride() {
     if (!spreadEvent) return;
     const home = parseFloat(spreadHome);
@@ -850,6 +876,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                           <TableHead>Matchup</TableHead>
                           <TableHead>Round</TableHead>
                           <TableHead>Final Score</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -861,6 +888,16 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                             <TableCell>{getRoundName(event.round_key)}</TableCell>
                             <TableCell>
                               {event.final_away_score ?? '-'} - {event.final_home_score ?? '-'}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex gap-1 justify-end">
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSpreadOverride(event)} title="Override spread">
+                                  <Settings2 className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setUnresolveEvent(event)} title="Un-resolve event">
+                                  <Undo2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -1300,6 +1337,25 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Un-resolve Confirmation */}
+      <AlertDialog open={!!unresolveEvent} onOpenChange={() => setUnresolveEvent(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Un-resolve Event</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will revert <strong>{unresolveEvent?.away_team} @ {unresolveEvent?.home_team}</strong> back to scheduled status, clear its scores, undo any ownership captures, and delete resolution audit entries. The event can then be re-resolved later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={unresolving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleUnresolve} disabled={unresolving}>
+              {unresolving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Un-resolve
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
