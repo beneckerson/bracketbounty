@@ -296,14 +296,45 @@ export function ManagePoolDrawer({
                     <div
                       className="flex items-center justify-between p-2 bg-primary/10 border border-primary/20 rounded-lg"
                     >
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="w-6 h-6 rounded-full bg-primary/30 flex items-center justify-center shrink-0">
                           <Crown className="h-3 w-3 text-primary" />
                         </div>
-                        <span className="text-sm font-medium">{commissioner.display_name}</span>
-                        <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                          Commissioner
-                        </span>
+                        {editingMemberId === commissioner.id ? (
+                          <>
+                            <Input
+                              className="h-7 text-sm"
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameMember(commissioner.id);
+                                if (e.key === 'Escape') setEditingMemberId(null);
+                              }}
+                              autoFocus
+                            />
+                            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => handleRenameMember(commissioner.id)}>
+                              <Check className="h-3 w-3" />
+                            </Button>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 shrink-0" onClick={() => setEditingMemberId(null)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <span className="text-sm font-medium truncate">{commissioner.display_name}</span>
+                            <span className="text-xs text-primary bg-primary/10 px-1.5 py-0.5 rounded shrink-0">
+                              Commissioner
+                            </span>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground shrink-0"
+                              onClick={() => { setEditingMemberId(commissioner.id); setEditingName(commissioner.display_name); }}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
