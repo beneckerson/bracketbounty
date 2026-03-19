@@ -151,7 +151,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [createAwayTeam, setCreateAwayTeam] = useState('');
   const [createRoundKey, setCreateRoundKey] = useState('round_of_64');
   const [createStartTime, setCreateStartTime] = useState('');
-  const [createFeedsInto, setCreateFeedsInto] = useState('');
+  
   const [creating, setCreating] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [awayOpen, setAwayOpen] = useState(false);
