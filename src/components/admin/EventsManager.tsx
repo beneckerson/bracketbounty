@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Link2 } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -79,7 +79,6 @@ const MLB_ROUNDS = [
 
 // Round options for NCAA Tournament (March Madness)
 const MARCH_MADNESS_ROUNDS = [
-  { key: 'first_four', name: 'First Four', order: 0 },
   { key: 'round_of_64', name: 'Round of 64', order: 1 },
   { key: 'round_of_32', name: 'Round of 32', order: 2 },
   { key: 'sweet_sixteen', name: 'Sweet Sixteen', order: 3 },
@@ -122,7 +121,7 @@ function getRoundName(roundKey: string | undefined): string {
     division_series: 'Division Series',
     lcs: 'League Championship',
     world_series: 'World Series',
-    first_four: 'First Four',
+    
     round_of_64: 'Round of 64',
     round_of_32: 'Round of 32',
     sweet_sixteen: 'Sweet Sixteen',
@@ -152,7 +151,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   const [createAwayTeam, setCreateAwayTeam] = useState('');
   const [createRoundKey, setCreateRoundKey] = useState('round_of_64');
   const [createStartTime, setCreateStartTime] = useState('');
-  const [createFeedsInto, setCreateFeedsInto] = useState('');
+  
   const [creating, setCreating] = useState(false);
   const [homeOpen, setHomeOpen] = useState(false);
   const [awayOpen, setAwayOpen] = useState(false);
@@ -410,14 +409,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
-      // If feeds_into is set, link the First Four event to this new R64 event
-      if (createFeedsInto) {
-        await supabase
-          .from('events')
-          .update({ feeds_into_event_id: newEvent.id })
-          .eq('id', createFeedsInto);
-      }
-
       // Also upsert both teams into the teams table
       await supabase.from('teams').upsert([
         { code: homeCode, name: createHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
@@ -430,7 +421,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
       setCreateAwayTeam('');
       setCreateRoundKey('round_of_64');
       setCreateStartTime('');
-      setCreateFeedsInto('');
+      
       await fetchEvents();
     } catch (error: any) {
       console.error('Error creating event:', error);
@@ -523,137 +514,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setDeleting(false);
   }
 
-  const firstFourEvents = events.filter(e => e.round_key === 'first_four');
-
-  // First Four Pairings state
-  const [ffPairings, setFfPairings] = useState<Array<{
-    teamA: string;
-    teamB: string;
-    r64Opponent: string;
-    existingEventId?: string;
-    existingR64EventId?: string;
-  }>>([]);
-  const [ffSaving, setFfSaving] = useState(false);
-  const [ffTeamOpens, setFfTeamOpens] = useState<Record<string, boolean>>({});
-  const [ffSearches, setFfSearches] = useState<Record<string, string>>({});
-
-  // Initialize pairings from existing first_four events
-  useEffect(() => {
-    if (competitionKey !== 'march_madness') return;
-    
-    // Build pairings from existing first_four events
-    const existingPairings = firstFourEvents.map(ff => {
-      // Find the R64 event that this feeds into
-      const r64Event = events.find(e => {
-        // Check if any event references this first_four event via feeds_into
-        return false; // We check from the other direction
-      });
-      // Actually check: the first_four event should have feeds_into_event_id set
-      // But feeds_into is on the first_four event pointing to R64
-      // We need to find the R64 event this FF feeds into
-      const linkedR64 = events.find(e => 
-        e.round_key !== 'first_four' && 
-        firstFourEvents.some(f => f.id === ff.id) &&
-        // Check if any first_four event's feeds_into points to this event
-        false // We don't have feeds_into_event_id in our Event interface
-      );
-      
-      return {
-        teamA: ff.home_team,
-        teamB: ff.away_team,
-        r64Opponent: '',
-        existingEventId: ff.id,
-      };
-    });
-
-    // Pad to 4 pairings
-    while (existingPairings.length < 4) {
-      existingPairings.push({ teamA: '', teamB: '', r64Opponent: '', existingEventId: undefined });
-    }
-    
-    setFfPairings(existingPairings);
-  }, [events, competitionKey]);
-
-  function setFfTeamOpen(key: string, open: boolean) {
-    setFfTeamOpens(prev => ({ ...prev, [key]: open }));
-  }
-  function setFfSearch(key: string, value: string) {
-    setFfSearches(prev => ({ ...prev, [key]: value }));
-  }
-
-  async function handleSaveFirstFourPairings() {
-    // Validate: each pairing needs both teams
-    const activePairings = ffPairings.filter(p => p.teamA || p.teamB);
-    for (const p of activePairings) {
-      if (!p.teamA || !p.teamB) {
-        toast.error('Each pairing needs both teams filled in');
-        return;
-      }
-    }
-
-    setFfSaving(true);
-    try {
-      for (const pairing of activePairings) {
-        const homeCode = pairing.teamA.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-        const awayCode = pairing.teamB.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-
-        if (pairing.existingEventId) {
-          // Update existing event
-          await supabase.from('events').update({
-            home_team: homeCode,
-            away_team: awayCode,
-          }).eq('id', pairing.existingEventId);
-        } else {
-          // Create new first_four event
-          const { data: newEvent, error } = await supabase.from('events').insert({
-            competition_key: competitionKey,
-            round_key: 'first_four',
-            round_order: 0,
-            home_team: homeCode,
-            away_team: awayCode,
-            event_type: 'game' as const,
-            status: 'scheduled' as const,
-          }).select().single();
-
-          if (error) throw error;
-
-          // If R64 opponent specified, create a placeholder R64 event linked to this FF
-          if (pairing.r64Opponent && newEvent) {
-            const r64OpponentCode = pairing.r64Opponent.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-            const { data: r64Event } = await supabase.from('events').insert({
-              competition_key: competitionKey,
-              round_key: 'round_of_64',
-              round_order: 1,
-              home_team: r64OpponentCode,
-              away_team: homeCode, // Use FF home team as placeholder
-              event_type: 'game' as const,
-              status: 'scheduled' as const,
-            }).select().single();
-
-            if (r64Event) {
-              // Link FF event to R64 event
-              await supabase.from('events').update({
-                feeds_into_event_id: r64Event.id,
-              }).eq('id', newEvent.id);
-            }
-          }
-        }
-
-        // Ensure both teams exist in teams table
-        await supabase.from('teams').upsert([
-          { code: homeCode, name: pairing.teamA.trim(), abbreviation: homeCode, league: 'NCAAB' },
-          { code: awayCode, name: pairing.teamB.trim(), abbreviation: awayCode, league: 'NCAAB' },
-        ], { onConflict: 'code', ignoreDuplicates: true });
-      }
-
-      toast.success(`Saved ${activePairings.length} First Four pairing(s)`);
-      await fetchEvents();
-    } catch (error: any) {
-      console.error('Error saving First Four pairings:', error);
-      toast.error(error.message || 'Failed to save pairings');
-    }
-    setFfSaving(false);
-  }
 
   const hasPendingChanges = Object.keys(pendingChanges).length > 0;
 
@@ -948,200 +808,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
         </CardContent>
       </Card>
 
-      {/* First Four Pairings — only for March Madness */}
-      {competitionKey === 'march_madness' && (
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <Link2 className="h-5 w-5" />
-              First Four Pairings
-            </CardTitle>
-            <CardDescription>
-              Define the 4 play-in pairs. Each pair counts as 1 ownership slot (64 total).
-              When a First Four game resolves, the winner replaces the pair in ownership.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {ffPairings.map((pairing, idx) => (
-              <div key={idx} className="border rounded-lg p-4 space-y-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-sm font-medium text-muted-foreground">Pairing {idx + 1}</span>
-                  {pairing.existingEventId && (
-                    <Badge variant="secondary" className="text-xs">Saved</Badge>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {/* Team A */}
-                  <div>
-                    <Label className="text-xs">Team A</Label>
-                    <Popover open={ffTeamOpens[`${idx}-a`] || false} onOpenChange={(o) => setFfTeamOpen(`${idx}-a`, o)}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-9 text-sm">
-                          {pairing.teamA || 'Select team...'}
-                          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search..." value={ffSearches[`${idx}-a`] || ''} onValueChange={(v) => setFfSearch(`${idx}-a`, v)} />
-                          <CommandList>
-                            <CommandEmpty>
-                              <button
-                                type="button"
-                                className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
-                                onClick={() => {
-                                  const updated = [...ffPairings];
-                                  updated[idx] = { ...updated[idx], teamA: ffSearches[`${idx}-a`] || '' };
-                                  setFfPairings(updated);
-                                  setFfTeamOpen(`${idx}-a`, false);
-                                  setFfSearch(`${idx}-a`, '');
-                                }}
-                              >
-                                Use "{ffSearches[`${idx}-a`]}"
-                              </button>
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {rosterTeams.map(t => (
-                                <CommandItem
-                                  key={t.code}
-                                  value={t.name}
-                                  onSelect={() => {
-                                    const updated = [...ffPairings];
-                                    updated[idx] = { ...updated[idx], teamA: t.name };
-                                    setFfPairings(updated);
-                                    setFfTeamOpen(`${idx}-a`, false);
-                                    setFfSearch(`${idx}-a`, '');
-                                  }}
-                                >
-                                  <Check className={cn("mr-2 h-3 w-3", pairing.teamA === t.name ? "opacity-100" : "opacity-0")} />
-                                  {t.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-
-                  {/* Team B */}
-                  <div>
-                    <Label className="text-xs">Team B</Label>
-                    <Popover open={ffTeamOpens[`${idx}-b`] || false} onOpenChange={(o) => setFfTeamOpen(`${idx}-b`, o)}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-9 text-sm">
-                          {pairing.teamB || 'Select team...'}
-                          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search..." value={ffSearches[`${idx}-b`] || ''} onValueChange={(v) => setFfSearch(`${idx}-b`, v)} />
-                          <CommandList>
-                            <CommandEmpty>
-                              <button
-                                type="button"
-                                className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
-                                onClick={() => {
-                                  const updated = [...ffPairings];
-                                  updated[idx] = { ...updated[idx], teamB: ffSearches[`${idx}-b`] || '' };
-                                  setFfPairings(updated);
-                                  setFfTeamOpen(`${idx}-b`, false);
-                                  setFfSearch(`${idx}-b`, '');
-                                }}
-                              >
-                                Use "{ffSearches[`${idx}-b`]}"
-                              </button>
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {rosterTeams.map(t => (
-                                <CommandItem
-                                  key={t.code}
-                                  value={t.name}
-                                  onSelect={() => {
-                                    const updated = [...ffPairings];
-                                    updated[idx] = { ...updated[idx], teamB: t.name };
-                                    setFfPairings(updated);
-                                    setFfTeamOpen(`${idx}-b`, false);
-                                    setFfSearch(`${idx}-b`, '');
-                                  }}
-                                >
-                                  <Check className={cn("mr-2 h-3 w-3", pairing.teamB === t.name ? "opacity-100" : "opacity-0")} />
-                                  {t.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-
-                {/* Optional R64 opponent */}
-                {!pairing.existingEventId && (
-                  <div>
-                    <Label className="text-xs">R64 Opponent (optional — creates placeholder game)</Label>
-                    <Popover open={ffTeamOpens[`${idx}-r64`] || false} onOpenChange={(o) => setFfTeamOpen(`${idx}-r64`, o)}>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" role="combobox" className="w-full justify-between font-normal h-9 text-sm">
-                          {pairing.r64Opponent || 'None'}
-                          <ChevronsUpDown className="ml-2 h-3 w-3 shrink-0 opacity-50" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0" align="start">
-                        <Command>
-                          <CommandInput placeholder="Search..." value={ffSearches[`${idx}-r64`] || ''} onValueChange={(v) => setFfSearch(`${idx}-r64`, v)} />
-                          <CommandList>
-                            <CommandEmpty>
-                              <button
-                                type="button"
-                                className="w-full px-2 py-1.5 text-sm text-left hover:bg-accent rounded-sm"
-                                onClick={() => {
-                                  const updated = [...ffPairings];
-                                  updated[idx] = { ...updated[idx], r64Opponent: ffSearches[`${idx}-r64`] || '' };
-                                  setFfPairings(updated);
-                                  setFfTeamOpen(`${idx}-r64`, false);
-                                  setFfSearch(`${idx}-r64`, '');
-                                }}
-                              >
-                                Use "{ffSearches[`${idx}-r64`]}"
-                              </button>
-                            </CommandEmpty>
-                            <CommandGroup>
-                              {rosterTeams.map(t => (
-                                <CommandItem
-                                  key={t.code}
-                                  value={t.name}
-                                  onSelect={() => {
-                                    const updated = [...ffPairings];
-                                    updated[idx] = { ...updated[idx], r64Opponent: t.name };
-                                    setFfPairings(updated);
-                                    setFfTeamOpen(`${idx}-r64`, false);
-                                    setFfSearch(`${idx}-r64`, '');
-                                  }}
-                                >
-                                  <Check className={cn("mr-2 h-3 w-3", pairing.r64Opponent === t.name ? "opacity-100" : "opacity-0")} />
-                                  {t.name}
-                                </CommandItem>
-                              ))}
-                            </CommandGroup>
-                          </CommandList>
-                        </Command>
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <Button onClick={handleSaveFirstFourPairings} disabled={ffSaving} className="w-full">
-              {ffSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Save First Four Pairings
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
 
       <Dialog open={!!selectedEvent} onOpenChange={() => setSelectedEvent(null)}>
@@ -1229,7 +895,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           <DialogHeader>
             <DialogTitle>Create Event Manually</DialogTitle>
             <DialogDescription>
-              Add a game that doesn't exist in the Odds API yet (e.g., R64 games with TBD First Four opponents).
+              Add a game that doesn't exist in the Odds API yet.
               When the API starts listing this game, it will be automatically adopted — no duplicates.
             </DialogDescription>
           </DialogHeader>
@@ -1345,27 +1011,6 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
               </div>
             </div>
 
-            {firstFourEvents.length > 0 && (
-              <div>
-                <Label>Linked First Four Game (optional)</Label>
-                <Select value={createFeedsInto || 'none'} onValueChange={v => setCreateFeedsInto(v === 'none' ? '' : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="No play-in link" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">No play-in link</SelectItem>
-                    {firstFourEvents.map(ff => (
-                      <SelectItem key={ff.id} value={ff.id}>
-                        {ff.away_team} / {ff.home_team}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Links a First Four game so its winner feeds into this event.
-                </p>
-              </div>
-            )}
           </div>
 
           <DialogFooter>

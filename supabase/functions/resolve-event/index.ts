@@ -76,56 +76,6 @@ serve(async (req) => {
 
     console.log(`Event updated: ${event.away_team} ${away_score} @ ${event.home_team} ${home_score}`);
 
-    // === First Four Resolution: Update ownership for play-in pairs ===
-    if (event.competition_key === 'march_madness' && event.round_key === 'first_four') {
-      const loserTeamCode = winnerTeamCode === event.home_team ? event.away_team : event.home_team;
-      
-      console.log(`First Four resolved: winner=${winnerTeamCode}, loser=${loserTeamCode}`);
-      
-      // Find all pools that have ownership of either team in this play-in game
-      // The owner of the play-in pair initially owns one of the two teams.
-      // We need to update the ownership to reflect the actual winner.
-      const { data: loserOwnerships } = await supabase
-        .from('ownership')
-        .select('id, pool_id, member_id')
-        .eq('team_code', loserTeamCode);
-      
-      for (const ownership of loserOwnerships || []) {
-        // Check if this pool is a march_madness pool
-        const { data: pool } = await supabase
-          .from('pools')
-          .select('competition_key')
-          .eq('id', ownership.pool_id)
-          .eq('competition_key', 'march_madness')
-          .maybeSingle();
-        
-        if (pool) {
-          // Check if the same member also owns the winner team (they shouldn't yet)
-          const { data: existingWinnerOwnership } = await supabase
-            .from('ownership')
-            .select('id')
-            .eq('pool_id', ownership.pool_id)
-            .eq('team_code', winnerTeamCode)
-            .maybeSingle();
-          
-          if (!existingWinnerOwnership) {
-            // Transfer: give the winner team to the same owner, remove loser team
-            await supabase.from('ownership').insert({
-              pool_id: ownership.pool_id,
-              member_id: ownership.member_id,
-              team_code: winnerTeamCode,
-              acquired_via: 'initial',
-            });
-          }
-          
-          // Remove the losing team ownership
-          await supabase.from('ownership').delete().eq('id', ownership.id);
-          
-          console.log(`Pool ${ownership.pool_id}: transferred ownership from ${loserTeamCode} to ${winnerTeamCode}`);
-        }
-      }
-    }
-
     // 3. Find all unresolved pool_matchups for this event
     const { data: matchups, error: matchupsError } = await supabase
       .from('pool_matchups')

@@ -55,7 +55,7 @@ export default function CreatePool() {
   const [matchupPreviews, setMatchupPreviews] = useState<MatchupPreviewData[]>([]);
   const [loadingMatchups, setLoadingMatchups] = useState(false);
   const [teamsMap, setTeamsMap] = useState<Record<string, Team>>({});
-  const [firstFourPairCount, setFirstFourPairCount] = useState(0);
+  
   
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -97,17 +97,6 @@ export default function CreatePool() {
         form.setValue('selectedTeams', allTeamCodes);
       }
 
-      // For March Madness, detect First Four pairs
-      if (comp.key === 'march_madness') {
-        const { data: ffEvents } = await supabase
-          .from('events')
-          .select('id')
-          .eq('competition_key', 'march_madness')
-          .eq('round_key', 'first_four');
-        setFirstFourPairCount(ffEvents?.length || 0);
-      } else {
-        setFirstFourPairCount(0);
-      }
     } catch (error) {
       console.error('Error fetching roster teams:', error);
     }
@@ -229,7 +218,7 @@ export default function CreatePool() {
 
   // Calculate allocation status
   const teamCount = values.selectedTeams.length;
-  const effectiveTeamCount = teamCount - firstFourPairCount;
+  const effectiveTeamCount = teamCount;
   const playerCount = values.maxPlayers;
 
   // Auto-sync teamsPerPlayer when the math divides evenly
@@ -489,7 +478,6 @@ export default function CreatePool() {
                             {effectiveTeamCount > 0 && playerCount > 0 && (
                               <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-1 rounded">
                                 {Math.floor(effectiveTeamCount / playerCount)} team{Math.floor(effectiveTeamCount / playerCount) !== 1 ? 's' : ''} each
-                                {firstFourPairCount > 0 && ` (${effectiveTeamCount} slots)`}
                               </span>
                             )}
                           </div>
@@ -503,7 +491,7 @@ export default function CreatePool() {
                             />
                           </FormControl>
                           <FormDescription className="text-xs">
-                            {teamCount} teams selected{firstFourPairCount > 0 ? ` (${firstFourPairCount} First Four pairs = ${effectiveTeamCount} ownership slots)` : ''}
+                            {teamCount} teams selected
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -516,7 +504,6 @@ export default function CreatePool() {
                         teamCount={teamCount}
                         playerCount={playerCount}
                         onPlayerCountChange={(count) => form.setValue('maxPlayers', count)}
-                        firstFourPairs={firstFourPairCount}
                       />
                     )}
 
@@ -606,7 +593,6 @@ export default function CreatePool() {
                         <span className="text-sm text-muted-foreground">👥</span>
                         <span className="text-sm font-medium">
                           {values.maxPlayers} players • {Math.floor(effectiveTeamCount / values.maxPlayers)} team{Math.floor(effectiveTeamCount / values.maxPlayers) !== 1 ? 's' : ''} each
-                          {firstFourPairCount > 0 && ` (${firstFourPairCount} play-in pairs share slots)`}
                         </span>
                       </div>
                       {effectiveTeamCount % values.maxPlayers !== 0 && (
