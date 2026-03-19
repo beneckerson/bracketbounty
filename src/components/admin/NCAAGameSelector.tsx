@@ -10,6 +10,7 @@ import { Loader2, Download, Save, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { toTeamCode, deriveSchoolAbbreviation, hashToColor } from '@/lib/team-utils';
 
 interface OddsApiEvent {
   id: string;
@@ -111,31 +112,7 @@ export function NCAAGameSelector() {
     }));
   }
 
-  function toTeamCode(name: string): string {
-    return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-  }
-
-  const TEAM_COLOR_PALETTE = [
-    'team-crimson', 'team-scarlet', 'team-red', 'team-green', 'team-orange',
-    'team-navy', 'team-blue', 'team-purple', 'team-gold', 'team-teal',
-  ];
-
-  function hashToColor(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return TEAM_COLOR_PALETTE[Math.abs(hash) % TEAM_COLOR_PALETTE.length];
-  }
-
-  function toAbbreviation(name: string): string {
-    const words = name.split(/\s+/);
-    if (words.length <= 1) return name;
-    // Drop the last word (mascot) and keep the school name
-    // "BYU Cougars" → "BYU", "Boston College Eagles" → "Boston College"
-    return words.slice(0, -1).join(' ');
-  }
+  // Using shared helpers from team-utils: toTeamCode, deriveSchoolAbbreviation, hashToColor
 
   async function handleSave() {
     const games = Object.values(selectedGames);
@@ -181,8 +158,8 @@ export function NCAAGameSelector() {
 
         // Upsert teams with hash-based colors
         const teams = [
-          { code: homeCode, name: game.event.home_team, abbreviation: toAbbreviation(game.event.home_team), league: 'NCAAB', color: hashToColor(homeCode) },
-          { code: awayCode, name: game.event.away_team, abbreviation: toAbbreviation(game.event.away_team), league: 'NCAAB', color: hashToColor(awayCode) },
+          { code: homeCode, name: game.event.home_team, abbreviation: deriveSchoolAbbreviation(game.event.home_team), league: 'NCAAB', color: hashToColor(homeCode) },
+          { code: awayCode, name: game.event.away_team, abbreviation: deriveSchoolAbbreviation(game.event.away_team), league: 'NCAAB', color: hashToColor(awayCode) },
         ];
         await supabase.from('teams').upsert(teams, { onConflict: 'code', ignoreDuplicates: true });
       }

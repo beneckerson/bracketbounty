@@ -262,12 +262,16 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
       }
 
       // Upsert teams into teams table (in case they don't exist)
-      const teamsToUpsert = newCodes.map(code => ({
-        code,
-        name: code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
-        abbreviation: code,
-        league: league,
-      }));
+      const teamsToUpsert = newCodes.map(code => {
+        const name = code.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return {
+          code,
+          name,
+          abbreviation: deriveSchoolAbbreviation(name),
+          league: league,
+          color: hashToColor(code),
+        };
+      });
       await supabase.from('teams').upsert(teamsToUpsert, { onConflict: 'code', ignoreDuplicates: true });
 
       // Add to competition_rosters
