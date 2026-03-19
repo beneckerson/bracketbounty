@@ -728,9 +728,15 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                 </Badge>
                               </TableCell>
                               <TableCell className="text-right">
-                                <Button size="sm" onClick={() => openResolveDialog(event)}>
-                                  Resolve
-                                </Button>
+                                <div className="flex gap-1 justify-end">
+                                  <Button variant="outline" size="sm" onClick={() => openSpreadOverride(event)} title="Override spread">
+                                    <Settings2 className="h-3.5 w-3.5 mr-1" />
+                                    Spread
+                                  </Button>
+                                  <Button size="sm" onClick={() => openResolveDialog(event)}>
+                                    Resolve
+                                  </Button>
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
