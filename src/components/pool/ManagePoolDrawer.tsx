@@ -72,6 +72,8 @@ export function ManagePoolDrawer({
   const [startingPool, setStartingPool] = useState(false);
   const [deletingPool, setDeletingPool] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
   
   // Team assignment dialog state
   const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
