@@ -486,6 +486,70 @@ export default function Rosters() {
               </CardContent>
             </Card>
           )}
+
+          {/* Danger Zone */}
+          {selectedCompetition && selectedSeason && (
+            <Card className="border-destructive/50">
+              <CardHeader>
+                <CardTitle className="text-lg text-destructive flex items-center gap-2">
+                  <Trash2 className="h-5 w-5" />
+                  Danger Zone
+                </CardTitle>
+                <CardDescription>
+                  Bulk delete operations for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name} — {selectedSeason}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-wrap gap-4">
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={deletingRoster}>
+                      {deletingRoster && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete All Roster Teams
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete entire roster?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all teams from the {selectedSeason} roster for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name}. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteRoster} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete All Teams
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" disabled={deletingEvents}>
+                      {deletingEvents && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete All Events & Lines
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete all events?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This will remove all events and their associated lines for {COMPETITIONS.find(c => c.key === selectedCompetition)?.name}. Events linked to active pool matchups cannot be deleted. This cannot be undone.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteEvents} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Delete All Events
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </main>
     </div>
