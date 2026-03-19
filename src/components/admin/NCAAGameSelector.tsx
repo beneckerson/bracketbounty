@@ -112,31 +112,7 @@ export function NCAAGameSelector() {
     }));
   }
 
-  function toTeamCode(name: string): string {
-    return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_').replace(/^_|_$/g, '');
-  }
-
-  const TEAM_COLOR_PALETTE = [
-    'team-crimson', 'team-scarlet', 'team-red', 'team-green', 'team-orange',
-    'team-navy', 'team-blue', 'team-purple', 'team-gold', 'team-teal',
-  ];
-
-  function hashToColor(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash |= 0;
-    }
-    return TEAM_COLOR_PALETTE[Math.abs(hash) % TEAM_COLOR_PALETTE.length];
-  }
-
-  function toAbbreviation(name: string): string {
-    const words = name.split(/\s+/);
-    if (words.length <= 1) return name;
-    // Drop the last word (mascot) and keep the school name
-    // "BYU Cougars" → "BYU", "Boston College Eagles" → "Boston College"
-    return words.slice(0, -1).join(' ');
-  }
+  // Using shared helpers from team-utils: toTeamCode, deriveSchoolAbbreviation, hashToColor
 
   async function handleSave() {
     const games = Object.values(selectedGames);
