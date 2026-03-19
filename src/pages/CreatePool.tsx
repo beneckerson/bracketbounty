@@ -120,7 +120,14 @@ export default function CreatePool() {
   const prevStep = () => setCurrentStep((s) => Math.max(s - 1, 1));
 
   const onSubmit = async (values: PoolFormValues) => {
-    if (!user || !selectedCompetition) return;
+    if (!user) {
+      toast({ title: 'Not signed in', description: 'Please sign in to create a pool.', variant: 'destructive' });
+      return;
+    }
+    if (!selectedCompetition) {
+      toast({ title: 'No competition selected', description: 'Go back to step 1 and choose a competition.', variant: 'destructive' });
+      return;
+    }
 
     setIsSubmitting(true);
 
