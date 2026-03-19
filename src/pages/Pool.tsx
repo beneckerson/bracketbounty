@@ -938,7 +938,7 @@ export default function Pool() {
                 <Users className="h-5 w-5" />
                 Players ({members.length} / {pool.max_players || '—'})
               </h2>
-              {isCreator && pool.status === 'lobby' && (
+              {isCreator && (
                 <Button variant="outline" size="sm" onClick={() => setManageOpen(true)}>
                   <Settings className="h-4 w-4 mr-2" />
                   Manage
