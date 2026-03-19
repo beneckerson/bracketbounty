@@ -319,7 +319,8 @@ export function ManagePoolDrawer({
                 </div>
               </div>
 
-              {/* Start Pool */}
+              {/* Start Pool - only in lobby */}
+              {pool.status === 'lobby' && (
               <div className="space-y-3">
                 <h3 className="text-sm font-medium">Start Pool</h3>
                 <div className="space-y-3">
@@ -354,6 +355,7 @@ export function ManagePoolDrawer({
                   </p>
                 </div>
               </div>
+              )}
 
               {/* Danger Zone */}
               <div className="space-y-3 pt-4 border-t border-border">
