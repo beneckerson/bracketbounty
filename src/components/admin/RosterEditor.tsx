@@ -58,6 +58,13 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
   const [pendingChanges, setPendingChanges] = useState<Map<string, Partial<RosterEntry>>>(new Map());
   const [manualTeamCode, setManualTeamCode] = useState('');
   const [syncingFromEvents, setSyncingFromEvents] = useState(false);
+  
+  // Edit team dialog state
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAbbreviation, setEditAbbreviation] = useState('');
+  const [editColor, setEditColor] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const league = getLeagueFromCompetition(competitionKey);
   const competition = COMPETITIONS.find(c => c.key === competitionKey);
