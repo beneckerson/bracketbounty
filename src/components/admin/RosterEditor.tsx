@@ -495,7 +495,7 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                     {/* Team Color */}
                     <div
                       className="w-2 h-10 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: team?.color || 'hsl(var(--muted))' }}
+                      style={{ backgroundColor: resolveTeamColor(team?.color) }}
                     />
 
                     {/* Seed Input */}
@@ -520,6 +520,18 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                       </p>
                       <p className="text-xs text-muted-foreground">{team?.abbreviation}</p>
                     </div>
+
+                    {/* Edit Team Button */}
+                    {team && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => openEditTeam(team)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
 
                     {/* Eliminated Toggle */}
                     <div className="flex items-center gap-2">
