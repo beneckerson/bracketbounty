@@ -237,7 +237,7 @@ serve(async (req) => {
           console.log(`Team ${losingTeamCode} eliminated (loser lost to unowned team)`);
         }
         // Standard ADVANCES - the losing team is eliminated
-        else if (resultType === 'ADVANCES' && loserMemberId) {
+        else if ((resultType === 'ADVANCES' || resultType === 'UPSET') && loserMemberId) {
           await supabase
             .from('ownership')
             .delete()
