@@ -182,11 +182,12 @@ export default function CreatePool() {
 
       setCreatedPool({ id: pool.id, inviteCode: pool.invite_code });
       setShowSuccess(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating pool:', error);
+      const errorMsg = error?.message || error?.details || 'Failed to create pool. Please try again.';
       toast({
-        title: 'Error',
-        description: 'Failed to create pool. Please try again.',
+        title: 'Error creating pool',
+        description: String(errorMsg),
         variant: 'destructive',
       });
     } finally {
