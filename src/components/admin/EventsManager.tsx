@@ -410,9 +410,11 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
       if (error) throw error;
 
       // Also upsert both teams into the teams table
+      // Use shared helpers for proper abbreviations and colors
+      const { deriveSchoolAbbreviation, hashToColor } = await import('@/lib/team-utils');
       await supabase.from('teams').upsert([
-        { code: homeCode, name: createHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
-        { code: awayCode, name: createAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+        { code: homeCode, name: createHomeTeam.trim(), abbreviation: deriveSchoolAbbreviation(createHomeTeam.trim()), league: 'NCAAB', color: hashToColor(homeCode) },
+        { code: awayCode, name: createAwayTeam.trim(), abbreviation: deriveSchoolAbbreviation(createAwayTeam.trim()), league: 'NCAAB', color: hashToColor(awayCode) },
       ], { onConflict: 'code', ignoreDuplicates: true });
 
       toast.success(`Created event: ${awayCode} @ ${homeCode}`);
@@ -464,10 +466,11 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
-      // Upsert teams
+      // Upsert teams with proper abbreviations
+      const { deriveSchoolAbbreviation: deriveAbbr, hashToColor: hashColor } = await import('@/lib/team-utils');
       await supabase.from('teams').upsert([
-        { code: homeCode, name: editHomeTeam.trim(), abbreviation: homeCode, league: 'NCAAB' },
-        { code: awayCode, name: editAwayTeam.trim(), abbreviation: awayCode, league: 'NCAAB' },
+        { code: homeCode, name: editHomeTeam.trim(), abbreviation: deriveAbbr(editHomeTeam.trim()), league: 'NCAAB', color: hashColor(homeCode) },
+        { code: awayCode, name: editAwayTeam.trim(), abbreviation: deriveAbbr(editAwayTeam.trim()), league: 'NCAAB', color: hashColor(awayCode) },
       ], { onConflict: 'code', ignoreDuplicates: true });
 
       toast.success(`Updated event: ${awayCode} @ ${homeCode}`);

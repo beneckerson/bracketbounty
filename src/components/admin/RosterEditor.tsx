@@ -4,12 +4,15 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
+import { resolveTeamColor, TEAM_COLOR_OPTIONS, deriveSchoolAbbreviation, hashToColor } from '@/lib/team-utils';
 import { toast } from 'sonner';
-import { Plus, Trash2, Check, X, Upload, Save, Users, RefreshCw } from 'lucide-react';
+import { Plus, Trash2, Upload, Save, Users, RefreshCw, Pencil } from 'lucide-react';
 import { COMPETITIONS } from '@/lib/competitions';
 
 interface RosterEntry {
@@ -55,6 +58,13 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
   const [pendingChanges, setPendingChanges] = useState<Map<string, Partial<RosterEntry>>>(new Map());
   const [manualTeamCode, setManualTeamCode] = useState('');
   const [syncingFromEvents, setSyncingFromEvents] = useState(false);
+  
+  // Edit team dialog state
+  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editAbbreviation, setEditAbbreviation] = useState('');
+  const [editColor, setEditColor] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   const league = getLeagueFromCompetition(competitionKey);
   const competition = COMPETITIONS.find(c => c.key === competitionKey);
@@ -304,13 +314,16 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
       return;
     }
 
-    // Upsert into teams table
+    // Upsert into teams table with proper abbreviation and color
     const name = manualTeamCode.trim();
+    const abbreviation = deriveSchoolAbbreviation(name);
+    const color = hashToColor(code);
     await supabase.from('teams').upsert([{
       code,
       name,
-      abbreviation: code,
+      abbreviation,
       league: league,
+      color,
     }], { onConflict: 'code', ignoreDuplicates: true });
 
     // Add to roster
@@ -340,6 +353,46 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
       if (refreshedTeams) setAvailableTeams(refreshedTeams);
       toast.success(`Added ${code} to roster`);
     }
+  }
+
+  // Open edit dialog for a team
+  function openEditTeam(team: Team) {
+    setEditingTeam(team);
+    setEditName(team.name);
+    setEditAbbreviation(team.abbreviation);
+    setEditColor(team.color || 'team-gray');
+  }
+
+  // Save team metadata edits
+  async function saveTeamEdit() {
+    if (!editingTeam) return;
+    setEditSaving(true);
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          name: editName.trim(),
+          abbreviation: editAbbreviation.trim(),
+          color: editColor,
+        })
+        .eq('code', editingTeam.code);
+
+      if (error) throw error;
+
+      // Update local state
+      setAvailableTeams(prev => prev.map(t =>
+        t.code === editingTeam.code
+          ? { ...t, name: editName.trim(), abbreviation: editAbbreviation.trim(), color: editColor }
+          : t
+      ));
+
+      setEditingTeam(null);
+      toast.success(`Updated ${editAbbreviation.trim()}`);
+    } catch (error: any) {
+      console.error('Error updating team:', error);
+      toast.error(error.message || 'Failed to update team');
+    }
+    setEditSaving(false);
   }
 
   // Get the merged value (pending change or current)
@@ -442,7 +495,7 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                     {/* Team Color */}
                     <div
                       className="w-2 h-10 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: team?.color || 'hsl(var(--muted))' }}
+                      style={{ backgroundColor: resolveTeamColor(team?.color) }}
                     />
 
                     {/* Seed Input */}
@@ -467,6 +520,18 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                       </p>
                       <p className="text-xs text-muted-foreground">{team?.abbreviation}</p>
                     </div>
+
+                    {/* Edit Team Button */}
+                    {team && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-foreground"
+                        onClick={() => openEditTeam(team)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                    )}
 
                     {/* Eliminated Toggle */}
                     <div className="flex items-center gap-2">
@@ -507,7 +572,7 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
                 >
                   <div
                     className="w-2 h-2 rounded-full"
-                    style={{ backgroundColor: team.color || 'hsl(var(--muted))' }}
+                    style={{ backgroundColor: resolveTeamColor(team.color) }}
                   />
                   {team.abbreviation}
                   <Plus className="w-3 h-3" />
@@ -538,6 +603,50 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
           </p>
         </div>
       </CardContent>
+
+      {/* Edit Team Dialog */}
+      <Dialog open={!!editingTeam} onOpenChange={(open) => !open && setEditingTeam(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Team: {editingTeam?.code}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label>Display Name</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Abbreviation</Label>
+              <Input value={editAbbreviation} onChange={(e) => setEditAbbreviation(e.target.value)} />
+              <p className="text-xs text-muted-foreground">Shown on team pills and bracket</p>
+            </div>
+            <div className="space-y-2">
+              <Label>Color</Label>
+              <div className="flex flex-wrap gap-2">
+                {TEAM_COLOR_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.token}
+                    type="button"
+                    onClick={() => setEditColor(opt.token)}
+                    className={cn(
+                      'w-8 h-8 rounded-full border-2 transition-all',
+                      editColor === opt.token ? 'border-foreground scale-110' : 'border-transparent'
+                    )}
+                    style={{ backgroundColor: resolveTeamColor(opt.token) }}
+                    title={opt.label}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTeam(null)}>Cancel</Button>
+            <Button onClick={saveTeamEdit} disabled={editSaving || !editName.trim() || !editAbbreviation.trim()}>
+              {editSaving ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
