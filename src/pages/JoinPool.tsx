@@ -88,8 +88,6 @@ export default function JoinPool() {
       setNotFound(true);
     } else {
       const foundPool = data[0];
-      setPool(foundPool);
-      setNotFound(false);
       
       // Check if user is already a member of this pool
       if (user) {
@@ -106,6 +104,17 @@ export default function JoinPool() {
           return;
         }
       }
+
+      // Redirect to read-only pool view if pool is full
+      const poolIsFull = foundPool.max_players && foundPool.member_count >= foundPool.max_players;
+      if (poolIsFull) {
+        toast({ title: 'Pool is full', description: 'Viewing bracket in read-only mode.' });
+        navigate(`/pool/${foundPool.id}`);
+        return;
+      }
+
+      setPool(foundPool);
+      setNotFound(false);
     }
     setLookingUp(false);
   };
