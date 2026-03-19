@@ -314,13 +314,16 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
       return;
     }
 
-    // Upsert into teams table
+    // Upsert into teams table with proper abbreviation and color
     const name = manualTeamCode.trim();
+    const abbreviation = deriveSchoolAbbreviation(name);
+    const color = hashToColor(code);
     await supabase.from('teams').upsert([{
       code,
       name,
-      abbreviation: code,
+      abbreviation,
       league: league,
+      color,
     }], { onConflict: 'code', ignoreDuplicates: true });
 
     // Add to roster
@@ -350,6 +353,46 @@ export function RosterEditor({ competitionKey, season }: RosterEditorProps) {
       if (refreshedTeams) setAvailableTeams(refreshedTeams);
       toast.success(`Added ${code} to roster`);
     }
+  }
+
+  // Open edit dialog for a team
+  function openEditTeam(team: Team) {
+    setEditingTeam(team);
+    setEditName(team.name);
+    setEditAbbreviation(team.abbreviation);
+    setEditColor(team.color || 'team-gray');
+  }
+
+  // Save team metadata edits
+  async function saveTeamEdit() {
+    if (!editingTeam) return;
+    setEditSaving(true);
+    try {
+      const { error } = await supabase
+        .from('teams')
+        .update({
+          name: editName.trim(),
+          abbreviation: editAbbreviation.trim(),
+          color: editColor,
+        })
+        .eq('code', editingTeam.code);
+
+      if (error) throw error;
+
+      // Update local state
+      setAvailableTeams(prev => prev.map(t =>
+        t.code === editingTeam.code
+          ? { ...t, name: editName.trim(), abbreviation: editAbbreviation.trim(), color: editColor }
+          : t
+      ));
+
+      setEditingTeam(null);
+      toast.success(`Updated ${editAbbreviation.trim()}`);
+    } catch (error: any) {
+      console.error('Error updating team:', error);
+      toast.error(error.message || 'Failed to update team');
+    }
+    setEditSaving(false);
   }
 
   // Get the merged value (pending change or current)
