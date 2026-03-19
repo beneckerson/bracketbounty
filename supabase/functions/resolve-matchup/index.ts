@@ -202,24 +202,24 @@ serve(async (req) => {
         .eq('id', event.id);
     }
 
-    // Handle team capture/transfer in capture mode
+    // Handle team capture/elimination in capture mode
     if (pool.mode === 'capture' && winnerMemberId) {
       const loserMemberId = winnerMemberId === homeOwner?.member_id 
         ? awayOwner?.member_id 
         : homeOwner?.member_id;
       
-      const capturedTeamCode = winnerMemberId === homeOwner?.member_id
+      const losingTeamCode = winnerMemberId === homeOwner?.member_id
         ? event?.away_team
         : event?.home_team;
 
-      if (loserMemberId && capturedTeamCode) {
-        // Transfer ownership of losing team to winner
+      if (resultType === 'CAPTURED' && loserMemberId && losingTeamCode) {
+        // Winner captures loser's team
         const { error: captureError } = await supabase
           .from('ownership')
           .insert({
             pool_id: pool.id,
             member_id: winnerMemberId,
-            team_code: capturedTeamCode,
+            team_code: losingTeamCode,
             acquired_via: 'capture',
             from_matchup_id: matchup_id,
           });
@@ -228,13 +228,24 @@ serve(async (req) => {
           console.error('Failed to create capture ownership:', captureError);
         }
 
-        // Mark old ownership as inactive (or delete)
         await supabase
           .from('ownership')
           .delete()
           .eq('pool_id', pool.id)
           .eq('member_id', loserMemberId)
-          .eq('team_code', capturedTeamCode);
+          .eq('team_code', losingTeamCode);
+          
+        console.log(`Team ${losingTeamCode} captured by winner`);
+      } else if ((resultType === 'ADVANCES' || resultType === 'UPSET') && loserMemberId && losingTeamCode) {
+        // Loser's team is eliminated
+        await supabase
+          .from('ownership')
+          .delete()
+          .eq('pool_id', pool.id)
+          .eq('member_id', loserMemberId)
+          .eq('team_code', losingTeamCode);
+          
+        console.log(`Team ${losingTeamCode} eliminated (${resultType})`);
       }
     }
 
