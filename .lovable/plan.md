@@ -1,55 +1,41 @@
 
 
-## Plan: Show Eliminated Teams (with Capture History)
+## Plan: Fix Games Showing in Wrong Round
 
-### The Problem with Captures
-A team can appear in multiple owners' histories:
-1. **Owner A** gets DUKE initially → loses to Owner B via capture → DUKE is "lost" for A
-2. **Owner B** captures DUKE → later loses DUKE in another matchup → DUKE is "lost" for B too
+### Root Cause
+Two issues combine to put all March Madness games in the Round of 64:
 
-Simply showing every historical owner would duplicate team pills across multiple members. We need a clear, non-confusing approach.
+1. **`sync-odds`** hardcodes ALL March Madness events to `round_key: 'round_of_64'` (line 292-293), with a comment "admin will reassign"
+2. **`handleSaveChanges` in EventsManager** updates the event's `round_key` in the `events` table, but does NOT update the corresponding `pool_matchups.round_id` — so matchups stay linked to the original Round of 64 pool round even after the admin reassigns the event
 
-### Recommended UI Approach: Single "Lost" Section Per Owner
+### Fix
 
-Each owner's card shows:
-- **Active pills** (current ownership, as today)
-- **Lost pills** — teams they no longer own, shown faded with strikethrough + a small label indicating HOW they lost it:
-  - "Eliminated" (team lost the game outright, no capture)
-  - "Captured" (team was taken by another owner)
+**1. `supabase/functions/sync-odds/index.ts`** — Add March Madness round auto-detection
 
-This way a team like DUKE could appear as "Lost (Captured)" under Owner A and "Lost (Eliminated)" under Owner B — each owner sees their own history.
+Instead of defaulting everything to `round_of_64`, detect the round based on game dates:
+- Round of 64: March 20-21 (Thu-Fri of first weekend)
+- Round of 32: March 22-23 (Sat-Sun of first weekend)  
+- Sweet Sixteen: March 27-28
+- Elite Eight: March 29-30
+- Final Four: April 5
+- Championship: April 7
 
-### How to Derive Lost Teams
-From the resolved `pool_matchups` data already fetched:
-- For each final matchup, identify the **losing member** (`participant_a/b_member_id` that is NOT `winner_member_id`)
-- Identify which team(s) they lost: look at the event's `home_team`/`away_team` and match to the participant
-- If the team is NOT in their current `ownership` records, it's a "lost" team
-- Determine loss type: if the matchup has `decided_by` and the winning member gained the team (capture mode), it's "Captured"; otherwise "Eliminated"
+Use the same date-window approach already used for CFP round detection. This makes new events land in the correct round automatically.
 
-### Changes
+**2. `src/components/admin/EventsManager.tsx`** — Cascade round changes to pool_matchups
 
-**1. `src/lib/types.ts`** — Add `lostTeams` to `PoolMember`
-```typescript
-lostTeams: { teamCode: string; lostVia: 'eliminated' | 'captured'; fromMatchupId?: string }[];
-```
+When the admin saves round_key changes, also update all `pool_matchups` that reference the changed event. For each changed event:
+- Find all `pool_matchups` with that `event_id`
+- Look up the pool's `pool_rounds` to find the round matching the new `round_key`
+- Update `pool_matchups.round_id` to the correct pool round
 
-**2. `src/pages/Pool.tsx`** — Compute `lostTeams` per member
-After building `ownershipByMember`, scan all final matchups to derive lost teams for each losing member. Attach to the transformed member object.
+**3. Data fix** — Move the 16 existing Round of 32 matchups
 
-**3. `src/components/bracket/OwnedTeamsList.tsx`** — Render lost team pills
-- After active pills, render `lostTeams` as faded pills with `opacity-40`, `line-through`, and a small tag ("Elim" or "Cap'd")
-- A member with 0 active teams but ≥1 lost team moves to the "Eliminated" section (shown with all their lost pills)
-- Members with 0 active and 0 lost teams are hidden entirely
+The 16 events already have `round_key = 'round_of_32'` in the events table, but their pool_matchups still point to the R64 round. The code change in #2 will let the admin re-save those round assignments to cascade the fix, or we can include a one-time migration to correct existing matchups.
 
-### Visual Treatment
-```text
-┌─────────────────────────────┐
-│ 🟢 Rich (Active Owners)    │
-│  [DUKE] [UNC] [BAYLOR]     │  ← active pills (bright)
-│  ̶W̶I̶S̶C̶ ̶ Elim  ̶O̶H̶I̶O̶S̶T̶ ̶ Cap'd │  ← lost pills (faded, strikethrough)
-└─────────────────────────────┘
-```
+### Technical Details
 
-### No Database Changes Required
-All data is already available from `pool_matchups` (participant IDs, winner) and `events` (team codes).
+- No database schema changes needed
+- The `pool_matchups` update in #2 requires looking up `pool_rounds` for each affected pool to find the `round_id` matching the new `round_key`
+- The admin already has UPDATE access on `pool_matchups` via the "Creators can manage matchups" RLS policy, but since EventsManager operates on events globally, we'll use the service role or ensure the cascade works for all affected pools
 
