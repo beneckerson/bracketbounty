@@ -207,6 +207,37 @@ function detectCFPPlayoffRound(startTime: Date, totalGames: number): { round_key
   return { round_key: 'first_round', round_order: 1 };
 }
 
+// Detect March Madness round based on game date
+function detectMarchMadnessRound(startTime: Date): { round_key: string; round_order: number } {
+  const month = startTime.getMonth(); // 0-indexed
+  const day = startTime.getDate();
+  
+  console.log(`March Madness round detection for date: ${month + 1}/${day}`);
+  
+  // 2025 March Madness schedule:
+  // Round of 64: March 20-21 (Thu-Fri)
+  // Round of 32: March 22-23 (Sat-Sun)
+  // Sweet Sixteen: March 27-28 (Thu-Fri)
+  // Elite Eight: March 29-30 (Sat-Sun)
+  // Final Four: April 5 (Sat)
+  // Championship: April 7 (Mon)
+  
+  if (month === 2) { // March
+    if (day <= 21) return { round_key: 'round_of_64', round_order: 1 };
+    if (day <= 23) return { round_key: 'round_of_32', round_order: 2 };
+    if (day <= 28) return { round_key: 'sweet_sixteen', round_order: 3 };
+    return { round_key: 'elite_eight', round_order: 4 };
+  }
+  
+  if (month === 3) { // April
+    if (day <= 6) return { round_key: 'final_four', round_order: 5 };
+    return { round_key: 'championship', round_order: 6 };
+  }
+  
+  // Fallback
+  return { round_key: 'round_of_64', round_order: 1 };
+}
+
 // Main round detection function
 function detectPlayoffRound(
   competitionKey: string, 
@@ -218,6 +249,9 @@ function detectPlayoffRound(
   }
   if (competitionKey === 'nfl_playoffs') {
     return detectNFLPlayoffRound(startTime, totalGames);
+  }
+  if (competitionKey === 'march_madness') {
+    return detectMarchMadnessRound(startTime);
   }
   
   return detectSeriesPlayoffRound(competitionKey, totalGames);
@@ -288,10 +322,8 @@ serve(async (req) => {
       
       // Detect the round for this event
       const eventStartTime = new Date(event.commence_time);
-      // For march_madness, rounds are admin-assigned — don't auto-detect
-      const roundInfo = competition_key === 'march_madness'
-        ? { round_key: 'round_of_64', round_order: 1 } // default; admin will reassign
-        : detectPlayoffRound(competition_key, eventStartTime, totalGames);
+      // Detect round for all competitions including March Madness
+      const roundInfo = detectPlayoffRound(competition_key, eventStartTime, totalGames);
       
       console.log(`Event ${event.home_team} vs ${event.away_team} -> Round: ${roundInfo.round_key} (order: ${roundInfo.round_order})`);
 
