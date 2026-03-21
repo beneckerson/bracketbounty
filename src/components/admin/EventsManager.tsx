@@ -513,6 +513,36 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
+      // Cascade round change to pool_matchups
+      if (editRoundKey !== editEvent.round_key) {
+        const { data: matchupsForEvent } = await supabase
+          .from('pool_matchups')
+          .select('id, pool_id')
+          .eq('event_id', editEvent.id);
+
+        if (matchupsForEvent && matchupsForEvent.length > 0) {
+          const poolIds = [...new Set(matchupsForEvent.map(m => m.pool_id))];
+          for (const poolId of poolIds) {
+            const { data: poolRound } = await supabase
+              .from('pool_rounds')
+              .select('id')
+              .eq('pool_id', poolId)
+              .eq('round_key', editRoundKey)
+              .maybeSingle();
+
+            if (poolRound) {
+              const matchupIds = matchupsForEvent
+                .filter(m => m.pool_id === poolId)
+                .map(m => m.id);
+              await supabase
+                .from('pool_matchups')
+                .update({ round_id: poolRound.id })
+                .in('id', matchupIds);
+            }
+          }
+        }
+      }
+
       // Upsert teams with proper abbreviations
       const { deriveSchoolAbbreviation: deriveAbbr, hashToColor: hashColor } = await import('@/lib/team-utils');
       await supabase.from('teams').upsert([
