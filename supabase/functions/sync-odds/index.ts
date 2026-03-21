@@ -322,10 +322,8 @@ serve(async (req) => {
       
       // Detect the round for this event
       const eventStartTime = new Date(event.commence_time);
-      // For march_madness, rounds are admin-assigned — don't auto-detect
-      const roundInfo = competition_key === 'march_madness'
-        ? { round_key: 'round_of_64', round_order: 1 } // default; admin will reassign
-        : detectPlayoffRound(competition_key, eventStartTime, totalGames);
+      // Detect round for all competitions including March Madness
+      const roundInfo = detectPlayoffRound(competition_key, eventStartTime, totalGames);
       
       console.log(`Event ${event.home_team} vs ${event.away_team} -> Round: ${roundInfo.round_key} (order: ${roundInfo.round_order})`);
 
