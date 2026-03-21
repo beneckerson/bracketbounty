@@ -331,6 +331,42 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
           console.error('Error updating event:', error);
           throw new Error(`Failed to update event: ${error.message}`);
         }
+
+        // Cascade: update pool_matchups that reference this event
+        const { data: matchupsForEvent } = await supabase
+          .from('pool_matchups')
+          .select('id, pool_id')
+          .eq('event_id', eventId);
+
+        if (matchupsForEvent && matchupsForEvent.length > 0) {
+          // Group by pool_id to look up the correct pool_round once per pool
+          const poolIds = [...new Set(matchupsForEvent.map(m => m.pool_id))];
+          
+          for (const poolId of poolIds) {
+            // Find the pool_round matching the new round_key
+            const { data: poolRound } = await supabase
+              .from('pool_rounds')
+              .select('id')
+              .eq('pool_id', poolId)
+              .eq('round_key', changes.round_key)
+              .maybeSingle();
+
+            if (poolRound) {
+              const matchupIds = matchupsForEvent
+                .filter(m => m.pool_id === poolId)
+                .map(m => m.id);
+
+              const { error: updateError } = await supabase
+                .from('pool_matchups')
+                .update({ round_id: poolRound.id })
+                .in('id', matchupIds);
+
+              if (updateError) {
+                console.error('Error cascading round to matchups:', updateError);
+              }
+            }
+          }
+        }
       }
 
       toast.success(`Updated ${Object.keys(pendingChanges).length} event(s)`);
