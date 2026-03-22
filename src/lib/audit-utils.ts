@@ -207,10 +207,11 @@ export function transformAuditLogs(
 ): AuditLogEntry[] {
   return rawLogs.map(log => ({
     id: log.id,
-    poolId: '', // Will be the same for all in context
+    poolId: '',
     actorName: log.actor_user_id ? memberMap[log.actor_user_id] || 'System' : 'System',
     actionType: log.action_type,
     description: generateAuditDescription(log.action_type, log.payload as AuditPayload, memberMap),
     createdAt: new Date(log.created_at),
+    payload: (log.payload as Record<string, unknown>) ?? undefined,
   }));
 }

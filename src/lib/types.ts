@@ -121,4 +121,5 @@ export interface AuditLogEntry {
   actionType: string;
   description: string;
   createdAt: Date;
+  payload?: Record<string, unknown>;
 }
