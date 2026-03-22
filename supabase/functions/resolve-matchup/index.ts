@@ -247,6 +247,25 @@ serve(async (req) => {
           
         console.log(`Team ${losingTeamCode} eliminated (${resultType})`);
       }
+
+      // In CAPTURED results, the winner's team (underdog) lost the actual game
+      // and must also be eliminated from ownership
+      if (resultType === 'CAPTURED' && winnerMemberId) {
+        const winnerTeamCode = winnerMemberId === homeOwner?.member_id
+          ? event?.home_team
+          : event?.away_team;
+
+        if (winnerTeamCode) {
+          await supabase
+            .from('ownership')
+            .delete()
+            .eq('pool_id', pool.id)
+            .eq('member_id', winnerMemberId)
+            .eq('team_code', winnerTeamCode);
+
+          console.log(`Winner's team ${winnerTeamCode} eliminated (underdog lost actual game in CAPTURED)`);
+        }
+      }
     }
 
     // Write audit log entry with detailed payload

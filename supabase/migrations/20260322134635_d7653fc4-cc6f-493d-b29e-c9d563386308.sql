@@ -1,0 +1,1 @@
+ALTER TABLE public.ownership ADD CONSTRAINT ownership_pool_member_team_unique UNIQUE (pool_id, member_id, team_code);
