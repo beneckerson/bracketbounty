@@ -1,41 +1,44 @@
 
 
-## Plan: Fix Games Showing in Wrong Round
+## Plan: Show Original Team Draw in History
 
-### Root Cause
-Two issues combine to put all March Madness games in the Round of 64:
+### Current State
+The `teams_assigned` audit log entry already stores the full original assignments in its payload (`assignments: [{ member_name, team_abbreviation }]`). However, the History drawer only shows a summary line: "Teams randomly assigned to X players."
 
-1. **`sync-odds`** hardcodes ALL March Madness events to `round_key: 'round_of_64'` (line 292-293), with a comment "admin will reassign"
-2. **`handleSaveChanges` in EventsManager** updates the event's `round_key` in the `events` table, but does NOT update the corresponding `pool_matchups.round_id` — so matchups stay linked to the original Round of 64 pool round even after the admin reassigns the event
+### Approach
+Enhance the AuditDrawer to show an expandable "Original Draw" section when a `teams_assigned` log entry is present. Clicking it reveals the full list of initial assignments grouped by member.
 
-### Fix
+### Changes
 
-**1. `supabase/functions/sync-odds/index.ts`** — Add March Madness round auto-detection
+**1. `src/lib/audit-utils.ts`** — Pass through raw payload for `teams_assigned`
 
-Instead of defaulting everything to `round_of_64`, detect the round based on game dates:
-- Round of 64: March 20-21 (Thu-Fri of first weekend)
-- Round of 32: March 22-23 (Sat-Sun of first weekend)  
-- Sweet Sixteen: March 27-28
-- Elite Eight: March 29-30
-- Final Four: April 5
-- Championship: April 7
+Add the raw `payload` to the `AuditLogEntry` return so the drawer can access the assignments array. Update the `AuditLogEntry` type in `types.ts` to include an optional `payload` field.
 
-Use the same date-window approach already used for CFP round detection. This makes new events land in the correct round automatically.
+**2. `src/lib/types.ts`** — Add optional `payload` to `AuditLogEntry`
 
-**2. `src/components/admin/EventsManager.tsx`** — Cascade round changes to pool_matchups
+```typescript
+payload?: Record<string, unknown>;
+```
 
-When the admin saves round_key changes, also update all `pool_matchups` that reference the changed event. For each changed event:
-- Find all `pool_matchups` with that `event_id`
-- Look up the pool's `pool_rounds` to find the round matching the new `round_key`
-- Update `pool_matchups.round_id` to the correct pool round
+**3. `src/components/bracket/AuditDrawer.tsx`** — Render expandable original draw
 
-**3. Data fix** — Move the 16 existing Round of 32 matchups
+For `teams_assigned` entries, render a collapsible section below the description showing assignments grouped by member name with team abbreviation pills. Uses the existing Collapsible component.
 
-The 16 events already have `round_key = 'round_of_32'` in the events table, but their pool_matchups still point to the R64 round. The code change in #2 will let the admin re-save those round assignments to cascade the fix, or we can include a one-time migration to correct existing matchups.
+### Visual Treatment
+```text
+┌──────────────────────────────────┐
+│ Teams randomly assigned (4)      │
+│ Mar 19, 2025 • 8:30 PM          │
+│                                  │
+│ ▼ View Original Draw             │
+│ ┌──────────────────────────────┐ │
+│ │ Rich: [DUKE] [UNC] [BAYLOR] │ │
+│ │ Mike: [GONZ] [HOUS] [PURD]  │ │
+│ │ Sara: [CONN] [ARIZ] [TENN]  │ │
+│ └──────────────────────────────┘ │
+└──────────────────────────────────┘
+```
 
-### Technical Details
-
-- No database schema changes needed
-- The `pool_matchups` update in #2 requires looking up `pool_rounds` for each affected pool to find the `round_id` matching the new `round_key`
-- The admin already has UPDATE access on `pool_matchups` via the "Creators can manage matchups" RLS policy, but since EventsManager operates on events globally, we'll use the service role or ensure the cascade works for all affected pools
+### No database changes needed
+The payload data already exists in `audit_log`.
 
