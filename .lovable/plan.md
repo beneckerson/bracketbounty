@@ -1,26 +1,29 @@
 
 
-## Plan: Clean Up Round of 32 Orphaned Teams
+## Plan: Fix Furman/UConn Orphaned Ownership + Verify Nebraska
 
-### Problem
-Two Round of 32 matchups were resolved before the CAPTURED elimination fix was deployed, leaving two teams incorrectly active in ownership.
+### Root Cause
+
+The same CAPTURED elimination bug, but for a **self-matchup** (Wilson owned both UConn and Furman in the R64). When Furman covered the spread but lost the actual game:
+- Wilson correctly "captured" UConn from himself (no net change in UConn ownership)
+- But Furman (the underdog that lost the game) was never eliminated from ownership
+
+Additionally, the capture record for UConn was never created — so UConn has **no owner at all**, which is why the R32 UConn vs UCLA matchup shows a "?" avatar.
+
+### Nebraska Status
+
+Nebraska is **correctly active**. It won its R32 game against Vanderbilt 74-72. There is no subsequent event in the system where Nebraska has been eliminated. If Nebraska lost in real life since then, it would need a new event entered and resolved.
 
 ### Data Fix
-Single migration to delete the two orphaned ownership records:
 
-1. **Aids → TCU_HORNED_FROGS**: Duke beat TCU 81-58 (ADVANCES). TCU was eliminated from the tournament but ownership record remains.
-2. **beneckerson → HIGH_POINT_PANTHERS**: Arkansas beat High Point 94-88 (CAPTURED — High Point covered +11.5 but lost). Ben correctly captured Arkansas, but his original High Point team lost the game and should have been eliminated.
+**One migration** with two operations:
 
-### Changes
-**One migration** — delete these two ownership rows:
-```sql
-DELETE FROM public.ownership 
-WHERE pool_id = '6797a523-c571-4138-8882-80811702490e' 
-AND (
-  (member_id = 'c1e3ba69-791e-4b5b-851b-3f410ba51929' AND team_code = 'TCU_HORNED_FROGS')
-  OR (member_id = 'dd04f58f-bbe6-466d-8459-e7bc8a30ff16' AND team_code = 'HIGH_POINT_PANTHERS')
-);
-```
+1. **Delete** `FURMAN_PALADINS` from Wilson (`3fb6216b`) — eliminated in R64 (lost to UConn 71-82)
+2. **Insert** `UCONN_HUSKIES` for Wilson (`3fb6216b`) with `acquired_via: 'capture'`, `from_matchup_id: 'b833134c'` — this restores the capture record that should have been created during resolution
 
-No code changes needed — the edge function fix already handles this for future resolutions.
+This will fix the "?" avatar on the UConn vs UCLA R32 matchup card, since UConn will now be properly owned by Wilson.
+
+### No Code Changes Needed
+
+The edge function fix from the previous plan already handles CAPTURED elimination for future resolutions. This is purely a data repair for a matchup resolved before the fix was deployed.
 
