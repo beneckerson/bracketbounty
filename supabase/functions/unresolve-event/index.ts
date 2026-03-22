@@ -48,6 +48,100 @@ serve(async (req) => {
     let unresolved = 0;
 
     for (const matchup of matchups || []) {
+      // Look up the audit_log entry for this matchup resolution to know what ownership to restore
+      const { data: auditEntries } = await supabase
+        .from('audit_log')
+        .select('payload')
+        .eq('pool_id', matchup.pool_id)
+        .eq('action_type', 'matchup_resolved')
+        .filter('payload->>matchup_id', 'eq', matchup.id);
+
+      const auditPayload = auditEntries?.[0]?.payload as Record<string, unknown> | null;
+
+      if (auditPayload) {
+        const resultType = auditPayload.result_type as string;
+        const winnerMemberId = auditPayload.winner_member_id as string;
+
+        // Get team codes from the event
+        const homeTeam = event.home_team;
+        const awayTeam = event.away_team;
+
+        // Determine loser info
+        const loserMemberId = resultType === 'CAPTURED'
+          ? auditPayload.captured_from_id as string
+          : (winnerMemberId === auditPayload.winner_member_id
+            ? null // we need to figure out loser from matchup participants
+            : null);
+
+        // Get the matchup participants to determine loser
+        const { data: fullMatchup } = await supabase
+          .from('pool_matchups')
+          .select('participant_a_member_id, participant_b_member_id')
+          .eq('id', matchup.id)
+          .single();
+
+        const participantA = fullMatchup?.participant_a_member_id;
+        const participantB = fullMatchup?.participant_b_member_id;
+        const loserMember = winnerMemberId === participantA ? participantB : participantA;
+
+        // Determine which team belonged to the loser (the one that was eliminated)
+        // We need ownership context - check which team the winner owns to infer the loser's team
+        const winnerTeamCode = winnerMemberId === participantA
+          ? homeTeam  // participant_a is typically home
+          : awayTeam;
+        const loserTeamCode = winnerTeamCode === homeTeam ? awayTeam : homeTeam;
+
+        if (resultType === 'ADVANCES' || resultType === 'UPSET') {
+          // Loser's team was eliminated — restore it
+          if (loserMember && loserTeamCode) {
+            console.log(`Restoring eliminated ownership: ${loserMember} → ${loserTeamCode}`);
+            await supabase
+              .from('ownership')
+              .upsert({
+                pool_id: matchup.pool_id,
+                member_id: loserMember,
+                team_code: loserTeamCode,
+                acquired_via: 'initial',
+              }, { onConflict: 'pool_id,member_id,team_code', ignoreDuplicates: true });
+          }
+        } else if (resultType === 'CAPTURED') {
+          // In CAPTURED: 
+          // 1. The favorite's team was captured by the underdog owner — delete the capture record (existing logic below handles this)
+          // 2. The underdog's team lost the actual game and was eliminated — restore it to the winner (underdog owner)
+          // 3. The favorite's team ownership needs to be restored to the original owner (favorite owner)
+          
+          const capturedFromId = auditPayload.captured_from_id as string || loserMember;
+          
+          // Restore the underdog's team (winner's team that was eliminated because it lost the game)
+          if (winnerMemberId && winnerTeamCode) {
+            console.log(`Restoring winner's eliminated team: ${winnerMemberId} → ${winnerTeamCode}`);
+            await supabase
+              .from('ownership')
+              .upsert({
+                pool_id: matchup.pool_id,
+                member_id: winnerMemberId,
+                team_code: winnerTeamCode,
+                acquired_via: 'initial',
+              }, { onConflict: 'pool_id,member_id,team_code', ignoreDuplicates: true });
+          }
+
+          // Restore the favorite's team back to the original owner (after capture record is deleted below)
+          if (capturedFromId && loserTeamCode) {
+            console.log(`Restoring captured team: ${capturedFromId} → ${loserTeamCode}`);
+            await supabase
+              .from('ownership')
+              .upsert({
+                pool_id: matchup.pool_id,
+                member_id: capturedFromId,
+                team_code: loserTeamCode,
+                acquired_via: 'initial',
+              }, { onConflict: 'pool_id,member_id,team_code', ignoreDuplicates: true });
+          }
+        }
+      } else {
+        console.log(`No audit_log entry found for matchup ${matchup.id} — skipping ownership restoration`);
+      }
+
       // Delete capture ownership records from this matchup
       const { data: deletedCaptures } = await supabase
         .from('ownership')
