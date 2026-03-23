@@ -72,6 +72,15 @@ serve(async (req) => {
     const homeOwner = ownerships?.find(o => o.team_code === event?.home_team);
     const awayOwner = ownerships?.find(o => o.team_code === event?.away_team);
 
+    // Sync participant fields with current ownership to prevent stale avatars
+    await supabase
+      .from('pool_matchups')
+      .update({
+        participant_a_member_id: homeOwner?.member_id || null,
+        participant_b_member_id: awayOwner?.member_id || null,
+      })
+      .eq('id', matchup_id);
+
     // Get the locked spread for this event
     let lockedSpread: { home_spread: number; away_spread: number } | null = null;
     if (event?.id) {
