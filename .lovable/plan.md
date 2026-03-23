@@ -1,29 +1,49 @@
 
 
-## Plan: Fix Furman/UConn Orphaned Ownership + Verify Nebraska
+## Plan: Fix Stale Matchup Participants + Systemic Prevention
 
 ### Root Cause
+When matchups are created (by `start-pool` or `sync-odds`), `participant_a_member_id` and `participant_b_member_id` are set based on team ownership at that moment. When a capture in Round N changes ownership of a team, the Round N+1 matchup still references the old owner. The UI uses these participant fields for avatar display, so wrong avatars appear.
 
-The same CAPTURED elimination bug, but for a **self-matchup** (Wilson owned both UConn and Furman in the R64). When Furman covered the spread but lost the actual game:
-- Wilson correctly "captured" UConn from himself (no net change in UConn ownership)
-- But Furman (the underdog that lost the game) was never eliminated from ownership
+### Stale Participants Found (Full Audit)
 
-Additionally, the capture record for UConn was never created — so UConn has **no owner at all**, which is why the R32 UConn vs UCLA matchup shows a "?" avatar.
+**Resolved matchups:**
+1. **Kansas vs St. John's R32** (`60063ec5`): participant_a = Rich → should be **beneckerson** (Kansas captured in R64); participant_b = Wilson → should be **Rich** (St. John's)
+2. **Virginia vs Tennessee R32** (`8ab88b89`): participant_a = beneckerson → should be **Kerner** (Virginia captured in R64)
 
-### Nebraska Status
+**Unresolved matchups:**
+3. **UConn vs UCLA R32** (`f259ad23`): participant_b = Aids → should be **B Hart** (UCLA captured in R64)
+4. **Duke vs St. John's Sweet 16** (`04565f7e`): participant_b = Wilson → should be **beneckerson** (St. John's captured in R32)
 
-Nebraska is **correctly active**. It won its R32 game against Vanderbilt 74-72. There is no subsequent event in the system where Nebraska has been eliminated. If Nebraska lost in real life since then, it would need a new event entered and resolved.
+### Changes
 
-### Data Fix
+**1. Data repair migration** — Fix all 4 stale participant records:
 
-**One migration** with two operations:
+```sql
+-- Kansas vs St. John's R32
+UPDATE pool_matchups SET participant_a_member_id = 'dd04f58f-...', participant_b_member_id = '2cca8527-...' WHERE id = '60063ec5-...';
+-- Virginia vs Tennessee R32
+UPDATE pool_matchups SET participant_a_member_id = '7b82f0ab-...' WHERE id = '8ab88b89-...';
+-- UConn vs UCLA R32
+UPDATE pool_matchups SET participant_b_member_id = '3a13f4a7-...' WHERE id = 'f259ad23-...';
+-- Duke vs St. John's Sweet 16
+UPDATE pool_matchups SET participant_b_member_id = 'dd04f58f-...' WHERE id = '04565f7e-...';
+```
 
-1. **Delete** `FURMAN_PALADINS` from Wilson (`3fb6216b`) — eliminated in R64 (lost to UConn 71-82)
-2. **Insert** `UCONN_HUSKIES` for Wilson (`3fb6216b`) with `acquired_via: 'capture'`, `from_matchup_id: 'b833134c'` — this restores the capture record that should have been created during resolution
+**2. `supabase/functions/resolve-matchup/index.ts`** — After looking up current ownership (lines 62-73), update participant fields on the matchup to reflect the actual current owners before resolving. This prevents stale avatars on all future resolutions:
 
-This will fix the "?" avatar on the UConn vs UCLA R32 matchup card, since UConn will now be properly owned by Wilson.
+```text
+// After fetching homeOwner/awayOwner (line 73), add:
+await supabase.from('pool_matchups').update({
+  participant_a_member_id: homeOwner?.member_id || null,
+  participant_b_member_id: awayOwner?.member_id || null,
+}).eq('id', matchup_id);
+```
 
-### No Code Changes Needed
+This is a small addition (~5 lines) inserted after line 73 and before the spread lookup.
 
-The edge function fix from the previous plan already handles CAPTURED elimination for future resolutions. This is purely a data repair for a matchup resolved before the fix was deployed.
+### Summary
+- 1 migration for data repair (4 UPDATE statements)
+- 1 edge function edit (~5 lines) to prevent future staleness
+- No UI changes needed — the UI already reads participant fields correctly
 
