@@ -564,18 +564,23 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     if (!deleteEvent) return;
     setDeleting(true);
     try {
-      // Check if any pool_matchups reference this event
-      const { count } = await supabase
+      // First, cascade-delete any pool_matchups that reference this event
+      const { data: linkedMatchups } = await supabase
         .from('pool_matchups')
-        .select('id', { count: 'exact', head: true })
+        .select('id')
         .eq('event_id', deleteEvent.id);
 
-      if (count && count > 0) {
-        toast.error('Cannot delete: event is linked to pool matchups');
-        setDeleteEvent(null);
-        setDeleting(false);
-        return;
+      if (linkedMatchups && linkedMatchups.length > 0) {
+        const { error: matchupDeleteError } = await supabase
+          .from('pool_matchups')
+          .delete()
+          .eq('event_id', deleteEvent.id);
+
+        if (matchupDeleteError) throw matchupDeleteError;
       }
+
+      // Also delete any lines linked to this event
+      await supabase.from('lines').delete().eq('event_id', deleteEvent.id);
 
       const { error } = await supabase
         .from('events')
@@ -584,7 +589,8 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
-      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}`);
+      const matchupCount = linkedMatchups?.length || 0;
+      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}${matchupCount > 0 ? ` (+ ${matchupCount} linked matchup${matchupCount > 1 ? 's' : ''})` : ''}`);
       setDeleteEvent(null);
       await fetchEvents();
     } catch (error: any) {
