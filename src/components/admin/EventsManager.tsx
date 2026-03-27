@@ -921,9 +921,13 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteEvent(event)} title="Delete event">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={async () => {
+                                      setDeleteEvent(event);
+                                      const { count } = await supabase.from('pool_matchups').select('id', { count: 'exact', head: true }).eq('event_id', event.id);
+                                      setDeleteMatchupCount(count || 0);
+                                    }} title="Delete event">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1346,13 +1350,18 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                 {deleteEvent?.away_team} @ {deleteEvent?.home_team}
               </span>
               ? This action cannot be undone.
+              {deleteMatchupCount > 0 && (
+                <span className="block mt-2 font-medium text-destructive">
+                  ⚠️ This will also delete {deleteMatchupCount} linked pool matchup{deleteMatchupCount > 1 ? 's' : ''}.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteEvent} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
+              Delete{deleteMatchupCount > 0 ? ` + ${deleteMatchupCount} matchup${deleteMatchupCount > 1 ? 's' : ''}` : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
