@@ -173,6 +173,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
   // Delete confirmation state
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
+  const [deleteMatchupCount, setDeleteMatchupCount] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
   // Spread override state
