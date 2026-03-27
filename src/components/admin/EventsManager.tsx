@@ -173,6 +173,7 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
   // Delete confirmation state
   const [deleteEvent, setDeleteEvent] = useState<Event | null>(null);
+  const [deleteMatchupCount, setDeleteMatchupCount] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
   // Spread override state
@@ -564,18 +565,23 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     if (!deleteEvent) return;
     setDeleting(true);
     try {
-      // Check if any pool_matchups reference this event
-      const { count } = await supabase
+      // First, cascade-delete any pool_matchups that reference this event
+      const { data: linkedMatchups } = await supabase
         .from('pool_matchups')
-        .select('id', { count: 'exact', head: true })
+        .select('id')
         .eq('event_id', deleteEvent.id);
 
-      if (count && count > 0) {
-        toast.error('Cannot delete: event is linked to pool matchups');
-        setDeleteEvent(null);
-        setDeleting(false);
-        return;
+      if (linkedMatchups && linkedMatchups.length > 0) {
+        const { error: matchupDeleteError } = await supabase
+          .from('pool_matchups')
+          .delete()
+          .eq('event_id', deleteEvent.id);
+
+        if (matchupDeleteError) throw matchupDeleteError;
       }
+
+      // Also delete any lines linked to this event
+      await supabase.from('lines').delete().eq('event_id', deleteEvent.id);
 
       const { error } = await supabase
         .from('events')
@@ -584,7 +590,8 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
 
       if (error) throw error;
 
-      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}`);
+      const matchupCount = linkedMatchups?.length || 0;
+      toast.success(`Deleted event: ${deleteEvent.away_team} @ ${deleteEvent.home_team}${matchupCount > 0 ? ` (+ ${matchupCount} linked matchup${matchupCount > 1 ? 's' : ''})` : ''}`);
       setDeleteEvent(null);
       await fetchEvents();
     } catch (error: any) {
@@ -914,9 +921,13 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                                       <Pencil className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
-                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteEvent(event)} title="Delete event">
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
+                                   <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={async () => {
+                                      setDeleteEvent(event);
+                                      const { count } = await supabase.from('pool_matchups').select('id', { count: 'exact', head: true }).eq('event_id', event.id);
+                                      setDeleteMatchupCount(count || 0);
+                                    }} title="Delete event">
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1339,13 +1350,18 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                 {deleteEvent?.away_team} @ {deleteEvent?.home_team}
               </span>
               ? This action cannot be undone.
+              {deleteMatchupCount > 0 && (
+                <span className="block mt-2 font-medium text-destructive">
+                  ⚠️ This will also delete {deleteMatchupCount} linked pool matchup{deleteMatchupCount > 1 ? 's' : ''}.
+                </span>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteEvent} disabled={deleting} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               {deleting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Delete
+              Delete{deleteMatchupCount > 0 ? ` + ${deleteMatchupCount} matchup${deleteMatchupCount > 1 ? 's' : ''}` : ''}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

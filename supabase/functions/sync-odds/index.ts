@@ -497,7 +497,7 @@ serve(async (req) => {
         const homeInPool = selectedTeams.includes(upsertedEvent.home_team);
         const awayInPool = selectedTeams.includes(upsertedEvent.away_team);
         
-        // Only create matchup if at least one team is in the pool
+        // Only create matchup if at least one team is in the pool's selected_teams
         if (!homeInPool && !awayInPool) {
           console.log(`Skipping pool ${pool.id}: neither ${upsertedEvent.home_team} nor ${upsertedEvent.away_team} in selected_teams`);
           continue;
@@ -534,6 +534,12 @@ serve(async (req) => {
         
         const ownerMap: Record<string, string> = {};
         (ownership || []).forEach((o: any) => { ownerMap[o.team_code] = o.member_id; });
+        
+        // Only create matchup if BOTH teams have active owners (prevents speculative future matchups)
+        if (!ownerMap[upsertedEvent.home_team] || !ownerMap[upsertedEvent.away_team]) {
+          console.log(`Skipping pool ${pool.id}: one or both teams not actively owned (${upsertedEvent.home_team}: ${ownerMap[upsertedEvent.home_team] || 'none'}, ${upsertedEvent.away_team}: ${ownerMap[upsertedEvent.away_team] || 'none'})`);
+          continue;
+        }
         
         // Create the matchup
         const { error: matchupError } = await supabase.from('pool_matchups').insert({
