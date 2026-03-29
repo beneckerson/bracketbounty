@@ -541,6 +541,33 @@ serve(async (req) => {
           continue;
         }
         
+        // Check if either team has an unresolved matchup in an earlier round
+        // This prevents speculative future-round matchups from being created
+        const { data: priorHomeMatchups } = await supabase
+          .from('pool_matchups')
+          .select('id, pool_rounds!inner(round_order)')
+          .eq('pool_id', pool.id)
+          .is('winner_member_id', null)
+          .eq('event.home_team', upsertedEvent.home_team)
+          .or(`event.away_team.eq.${upsertedEvent.home_team}`)
+          .lt('pool_rounds.round_order', upsertedEvent.round_order);
+
+        const { data: priorAwayMatchups } = await supabase
+          .from('pool_matchups')
+          .select('id, pool_rounds!inner(round_order)')
+          .eq('pool_id', pool.id)
+          .is('winner_member_id', null)
+          .eq('event.home_team', upsertedEvent.away_team)
+          .or(`event.away_team.eq.${upsertedEvent.away_team}`)
+          .lt('pool_rounds.round_order', upsertedEvent.round_order);
+
+        const hasUnresolvedPrior = (priorHomeMatchups && priorHomeMatchups.length > 0) || 
+                                    (priorAwayMatchups && priorAwayMatchups.length > 0);
+        if (hasUnresolvedPrior) {
+          console.log(`Skipping pool ${pool.id}: team(s) have unresolved prior-round matchups for ${upsertedEvent.home_team} vs ${upsertedEvent.away_team}`);
+          continue;
+        }
+        
         // Create the matchup
         const { error: matchupError } = await supabase.from('pool_matchups').insert({
           pool_id: pool.id,
