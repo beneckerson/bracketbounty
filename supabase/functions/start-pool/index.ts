@@ -295,7 +295,13 @@ Deno.serve(async (req) => {
         participant_b_member_id: string | null;
       }> = [];
 
-      for (const event of events) {
+      // Sort events by round_order so earlier rounds are processed first
+      const sortedEvents = [...events].sort((a, b) => a.round_order - b.round_order);
+      
+      // Track which teams already have matchups in earlier rounds (for speculative filtering)
+      const teamsWithMatchups: Record<string, number> = {}; // team_code -> lowest round_order with a matchup
+
+      for (const event of sortedEvents) {
         // Find the matching round
         let roundId = roundMap[event.round_key];
         
@@ -313,6 +319,22 @@ Deno.serve(async (req) => {
         } else {
           console.log(`[ROUND MATCH] Event ${event.id} (${event.round_key}) -> pool_round ${roundId}`);
         }
+
+        // Skip speculative matchups: if either team already has an unresolved matchup
+        // in an earlier round, this is a potential future pairing, not a confirmed one
+        const homeHasPrior = teamsWithMatchups[event.home_team] !== undefined && 
+                             teamsWithMatchups[event.home_team] < event.round_order;
+        const awayHasPrior = teamsWithMatchups[event.away_team] !== undefined && 
+                             teamsWithMatchups[event.away_team] < event.round_order;
+        
+        if (homeHasPrior || awayHasPrior) {
+          console.log(`[SPECULATIVE SKIP] Event ${event.id}: ${event.home_team} vs ${event.away_team} (round_order=${event.round_order}) - team(s) have prior-round matchups`);
+          continue;
+        }
+
+        // Track these teams as having matchups at this round order
+        if (!teamsWithMatchups[event.home_team]) teamsWithMatchups[event.home_team] = event.round_order;
+        if (!teamsWithMatchups[event.away_team]) teamsWithMatchups[event.away_team] = event.round_order;
 
         matchupInserts.push({
           pool_id: pool_id,
