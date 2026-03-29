@@ -1001,6 +1001,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleBridgeToPool(event)} disabled={bridging === event.id} title="Bridge to active pools">
+                                    {bridging === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                                  </Button>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSpreadOverride(event)} title="Override spread">
                                     <Settings2 className="h-3.5 w-3.5" />
                                   </Button>
