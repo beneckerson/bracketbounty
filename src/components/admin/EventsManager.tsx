@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Settings2, Undo2 } from 'lucide-react';
+import { Calendar, RefreshCw, Loader2, Save, AlertCircle, CheckCircle, Plus, ChevronsUpDown, Check, Pencil, Trash2, Settings2, Undo2, Link2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -185,6 +185,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
   // Un-resolve state
   const [unresolveEvent, setUnresolveEvent] = useState<Event | null>(null);
   const [unresolving, setUnresolving] = useState(false);
+
+  // Bridge to pool state
+  const [bridging, setBridging] = useState<string | null>(null);
 
   // Fetch roster teams when create or edit dialog opens
   const isMarchMadness = competitionKey === 'march_madness';
@@ -629,6 +632,91 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
     setUnresolving(false);
   }
 
+  async function handleBridgeToPool(event: Event) {
+    setBridging(event.id);
+    try {
+      // Find active pools for this competition
+      const { data: pools } = await supabase
+        .from('pools')
+        .select('id, name, competition_key, season')
+        .eq('competition_key', competitionKey)
+        .eq('status', 'active');
+
+      if (!pools || pools.length === 0) {
+        toast.error('No active pools found for this competition');
+        setBridging(null);
+        return;
+      }
+
+      let bridgedCount = 0;
+      for (const pool of pools) {
+        // Check if a matchup already exists for this event in this pool
+        const { data: existing } = await supabase
+          .from('pool_matchups')
+          .select('id')
+          .eq('pool_id', pool.id)
+          .eq('event_id', event.id)
+          .maybeSingle();
+
+        if (existing) continue;
+
+        // Find the pool_round matching this event's round_key
+        const { data: poolRound } = await supabase
+          .from('pool_rounds')
+          .select('id')
+          .eq('pool_id', pool.id)
+          .eq('round_key', event.round_key)
+          .maybeSingle();
+
+        if (!poolRound) continue;
+
+        // Find owners for home and away teams
+        const { data: homeOwner } = await supabase
+          .from('ownership')
+          .select('member_id')
+          .eq('pool_id', pool.id)
+          .eq('team_code', event.home_team)
+          .maybeSingle();
+
+        const { data: awayOwner } = await supabase
+          .from('ownership')
+          .select('member_id')
+          .eq('pool_id', pool.id)
+          .eq('team_code', event.away_team)
+          .maybeSingle();
+
+        if (!homeOwner && !awayOwner) continue;
+
+        const { error } = await supabase
+          .from('pool_matchups')
+          .insert({
+            pool_id: pool.id,
+            round_id: poolRound.id,
+            event_id: event.id,
+            participant_a_member_id: homeOwner?.member_id || null,
+            participant_b_member_id: awayOwner?.member_id || null,
+          });
+
+        if (error) {
+          console.error(`Error bridging to pool ${pool.name}:`, error);
+        } else {
+          bridgedCount++;
+        }
+      }
+
+      if (bridgedCount > 0) {
+        toast.success(`Bridged to ${bridgedCount} pool${bridgedCount > 1 ? 's' : ''}`);
+        await fetchEvents();
+      } else {
+        toast.info('No pools needed bridging (already linked or no matching round/owners)');
+      }
+    } catch (error: any) {
+      console.error('Error bridging event:', error);
+      toast.error(error.message || 'Failed to bridge event');
+    }
+    setBridging(null);
+  }
+
   async function handleSpreadOverride() {
     if (!spreadEvent) return;
     const home = parseFloat(spreadHome);
@@ -913,6 +1001,9 @@ export function EventsManager({ competitionKey }: EventsManagerProps) {
                               </TableCell>
                               <TableCell className="text-right">
                                 <div className="flex gap-1 justify-end">
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleBridgeToPool(event)} disabled={bridging === event.id} title="Bridge to active pools">
+                                    {bridging === event.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                                  </Button>
                                   <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openSpreadOverride(event)} title="Override spread">
                                     <Settings2 className="h-3.5 w-3.5" />
                                   </Button>
