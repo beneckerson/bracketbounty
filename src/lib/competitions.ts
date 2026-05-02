@@ -4,7 +4,7 @@ export interface CompetitionConfig {
   name: string;
   shortName: string;
   description: string;
-  format: 'single_elimination' | 'series_bracket';
+  format: 'single_elimination' | 'series_bracket' | 'field_event';
   captureEnabled: boolean;
   defaultTeamsPerPlayer: number;
   maxPlayers: number;
@@ -79,6 +79,19 @@ export const COMPETITIONS: CompetitionConfig[] = [
     icon: '⚾',
     season: '2026',
     oddsApiSportKey: 'baseball_mlb',
+  },
+  {
+    key: 'kentucky_derby',
+    name: 'Kentucky Derby',
+    shortName: 'Derby',
+    description: 'Winner-take-all horse racing pool. Each player owns horses; the owner of the winning horse wins the pot.',
+    format: 'field_event',
+    captureEnabled: false,
+    defaultTeamsPerPlayer: 1,
+    maxPlayers: 20,
+    icon: '🐎',
+    season: '2026',
+    oddsApiSportKey: '',
   },
   {
     key: 'march_madness',
