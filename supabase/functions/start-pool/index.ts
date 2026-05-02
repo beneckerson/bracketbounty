@@ -299,9 +299,6 @@ Deno.serve(async (req) => {
 
     // 6. Fetch events that match the pool's teams and competition
     // Field-event competitions (e.g. Kentucky Derby) have no head-to-head events.
-    const FIELD_EVENT_COMPETITIONS = new Set(['kentucky_derby']);
-    const isFieldEvent = FIELD_EVENT_COMPETITIONS.has(pool.competition_key);
-
     let events: Array<{ id: string; home_team: string; away_team: string; round_key: string; round_order: number }> | null = null;
     let eventsError: unknown = null;
 
