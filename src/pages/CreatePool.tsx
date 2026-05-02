@@ -232,13 +232,18 @@ export default function CreatePool() {
   const effectiveTeamCount = teamCount;
   const playerCount = values.maxPlayers;
 
-  // Auto-sync teamsPerPlayer when the math divides evenly
+  // Auto-sync teamsPerPlayer when the math divides evenly, OR for field events
+  // (where uneven counts are normal — leftover entries stay "in the field").
   useEffect(() => {
-    if (effectiveTeamCount > 0 && playerCount > 0 && effectiveTeamCount % playerCount === 0) {
-      const computed = Math.floor(effectiveTeamCount / playerCount);
-      form.setValue('teamsPerPlayer', computed);
+    if (effectiveTeamCount > 0 && playerCount > 0) {
+      const evenly = effectiveTeamCount % playerCount === 0;
+      const isField = selectedCompetition?.format === 'field_event';
+      if (evenly || isField) {
+        const computed = Math.max(1, Math.floor(effectiveTeamCount / playerCount));
+        form.setValue('teamsPerPlayer', computed);
+      }
     }
-  }, [effectiveTeamCount, playerCount, form]);
+  }, [effectiveTeamCount, playerCount, selectedCompetition, form]);
 
   // Fetch matchups and teams when entering step 4 (Review)
   useEffect(() => {
