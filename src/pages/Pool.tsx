@@ -811,6 +811,7 @@ export default function Pool() {
               poolDbId={pool.id}
               isCreator={isCreator}
               winnerMemberId={pool.winner_member_id ?? null}
+              selectedTeams={pool.selected_teams ?? []}
               onWinnerDeclared={fetchPoolData}
             />
           ) : (
