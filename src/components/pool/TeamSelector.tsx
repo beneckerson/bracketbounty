@@ -32,6 +32,7 @@ function getLeagueFromCompetition(competitionKey: string): string {
     'nhl_playoffs': 'NHL',
     'mlb_playoffs': 'MLB',
     'march_madness': 'NCAAB',
+    'kentucky_derby': 'HORSE',
   };
   return leagueMap[competitionKey] || competitionKey.split('_')[0].toUpperCase();
 }
