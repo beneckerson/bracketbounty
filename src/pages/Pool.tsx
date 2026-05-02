@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
 import { ManagePoolDrawer } from '@/components/pool/ManagePoolDrawer';
 import { BracketView } from '@/components/bracket/BracketView';
+import { FieldView } from '@/components/pool/FieldView';
 import { MatchupPreview, MatchupPreviewData, groupMatchupsByRound } from '@/components/pool/MatchupPreview';
 import { TeamAssignmentDialog } from '@/components/pool/TeamAssignmentDialog';
 import { useAuth } from '@/contexts/AuthContext';
