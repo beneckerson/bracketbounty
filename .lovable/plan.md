@@ -1,59 +1,45 @@
-## Plan: Add Kentucky Derby (Field-Event Competition, Winner-Take-All)
+## Fix Derby distribution + roll back the existing pool
 
-### Approach
-Add the Derby as a new competition with a new `field_event` format. Reuses all existing roster, ownership, and member infrastructure — the only "new" surface area is a single-race result entry and a simplified pool view.
+### Problem
+For winner-take-all field events (Kentucky Derby), `start-pool` round-robined all 19 horses across 8 members. It should give each member exactly **1 horse**, drawing the **lowest-seeded** horses (the favorites / morning-line top of the field). The remaining horses stay unowned in "the field". The user's current pool needs to be rolled back to lobby so it can be re-drawn correctly.
 
-- Horses = teams (admin-curated, no API sync)
-- Race = 1 round with no head-to-head matchups
-- **Winner-take-all**: whoever owns the winning horse wins the pool, period
+### 1. Edge function: `supabase/functions/start-pool/index.ts`
 
-### Changes
+For `field_event` competitions only:
+- Fetch `seed` for selected horses from `competition_rosters` (matching `competition_key` + `season`).
+- Sort selected horses ascending by seed (null seeds → last).
+- Take the top **N = members.length** (lowest seed numbers = favorites).
+- Shuffle just those N and assign 1:1 to members.
+- Skip ownership inserts for the rest — they remain unowned in the field.
+- Continue to short-circuit event/matchup creation (already done).
 
-**1. Competition definition** — `src/lib/competitions.ts`
-- Add `kentucky_derby` entry with `format: 'field_event'` (new format type alongside `single_elimination`/`series_bracket`).
-- No `oddsApiSportKey` (Odds API doesn't cover horse racing).
-- `defaultTeamsPerPlayer: 1`, `maxPlayers: 20`, season `'2026'`.
+Other competitions: behavior unchanged.
 
-**2. Horse roster** — reuse `competition_rosters` + `teams` tables (no schema changes)
-- Horses stored as `teams` rows with `league = 'HORSE'`, plus `competition_rosters` rows with `seed` = post position.
-- Extend `RosterEditor.tsx` with an "Add horse" form (name, post position, color) that creates both rows in one go, since there's no `sync-teams` source.
-- Existing `TeamSelector` works unchanged; we'll just relabel "seed" → "post" copy when competition is `kentucky_derby`.
+### 2. `FieldView.tsx`
 
-**3. Pool start** — `supabase/functions/start-pool/index.ts`
-- Add `kentucky_derby: [{ key: 'race', name: 'The Race', order: 1 }]` to `ROUND_CONFIGS`.
-- For `field_event` format: create ownership records and the single round, then **skip** event-fetch and matchup creation entirely. Nothing to bridge.
+- Accept new prop `selectedTeams: string[]`.
+- Build `team_code → member` lookup from `pool.members[].ownedTeams`.
+- Render every horse in `selectedTeams`:
+  - Owned → owner avatar + name; creator sees "Declare winner" while pool is active.
+  - Unowned → muted "In the field" label, no declare button.
+- Header subtitle: "{owned} drawn • {unowned} in the field".
+- Sort by seed when available (passed through Pool.tsx) so the program reads top-down.
 
-**4. Pool page rendering** — `src/pages/Pool.tsx` + new `src/components/pool/FieldView.tsx`
-- Branch on competition format. For `field_event`, render `FieldView`:
-  - Header with race name + post time
-  - Grid of all horses in the pool, each showing post #, horse name, owner avatar/name
-  - Winner badge + trophy on the winning horse once declared
-  - Pot total + "Winner: [name]" callout when completed
-- Reuse existing `OwnerAvatar`, audit drawer, manage-pool drawer.
+### 3. `Pool.tsx`
 
-**5. Declare winner (admin)** — extend `EventsManager.tsx` (or a small new `DeclareDerbyWinner` component shown only for `field_event` pools)
-- Dropdown of horses in the pool's roster → "Declare Winner" button
-- On submit (single transaction via edge function or RPC):
-  - Set `pools.winner_member_id` to the owner of the winning horse
-  - Set `pools.status = 'completed'`
-  - Insert audit log entry `derby_winner_declared` with horse code + member name
-- Existing winner-display UI (winner banner, venmo unlock via `is_venmo_visible`) lights up automatically since it keys off `pools.winner_member_id` + `status = 'completed'`.
+- Pass `selectedTeams={pool.selected_teams ?? []}` into `<FieldView />`.
 
-### Explicitly skipped
-- No `sync-odds`, `lock-lines`, `resolve-matchup`, `auto-lock-lines` involvement
-- No `events` or `lines` rows
-- No spreads, ATS scoring, or capture mechanics
-- No place/show — winner takes all per your call
+### 4. Roll back pool `578c19ac-e9b2-496b-a6c6-299f66494770`
 
-### Files touched
-- `src/lib/competitions.ts` (add entry + format type)
-- `src/lib/types.ts` (extend format union if exported)
-- `src/components/admin/RosterEditor.tsx` (add-horse form)
-- `src/components/admin/EventsManager.tsx` (Declare Winner section for field events)
-- `src/pages/Pool.tsx` (format branch)
-- `src/components/pool/FieldView.tsx` (new)
-- `supabase/functions/start-pool/index.ts` (round config + skip matchups for field event)
-- 1 migration: insert `('kentucky_derby', '2026', true)` into `competition_seasons`
+Data ops (no schema changes):
+- `DELETE FROM ownership WHERE pool_id = '578c19ac-...'` — clears the 19 stale assignments.
+- `DELETE FROM pool_rounds WHERE pool_id = '578c19ac-...'` — removes "The Race" round.
+- `UPDATE pools SET status = 'lobby', winner_member_id = NULL WHERE id = '578c19ac-...'`.
+- Insert audit_log: `pool_rolled_back` noting the corrective action.
 
-### Effort
-~½ to 1 day. Fully additive — does not touch existing bracket/odds/resolve code paths.
+Then the creator hits **Start Pool** again and the corrected logic runs: 8 favorites randomly distributed to the 8 members; the other 11 horses stay in the field.
+
+### Notes
+- No DB schema changes.
+- Seeds for all 19 derby horses are already populated in `competition_rosters`.
+- If `selected_teams.length <= members.length`, every horse gets an owner (no field).

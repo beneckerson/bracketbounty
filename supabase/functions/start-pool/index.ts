@@ -165,10 +165,45 @@ Deno.serve(async (req) => {
 
     console.log(`Distributing ${selectedTeams.length} teams among ${members.length} members`);
 
-    // 4. Randomly assign teams to members
-    const slotsToAssign: string[] = [...selectedTeams];
+    // Field-event competitions (e.g. Kentucky Derby): winner-take-all,
+    // each member gets exactly 1 entry; the lowest-seeded entries are drawn,
+    // higher seed numbers (long shots) are left "in the field" unowned.
+    const FIELD_EVENT_COMPETITIONS = new Set(['kentucky_derby']);
+    const isFieldEvent = FIELD_EVENT_COMPETITIONS.has(pool.competition_key);
 
-    // Shuffle slots
+    let slotsToAssign: string[];
+    if (isFieldEvent) {
+      const { data: rosterData } = await supabase
+        .from('competition_rosters')
+        .select('team_code, seed')
+        .eq('competition_key', pool.competition_key)
+        .eq('season', pool.season)
+        .in('team_code', selectedTeams);
+
+      const seedMap: Record<string, number> = {};
+      (rosterData || []).forEach((r: { team_code: string; seed: number | null }) => {
+        seedMap[r.team_code] = r.seed ?? Number.MAX_SAFE_INTEGER;
+      });
+
+      const sortedBySeed = [...selectedTeams].sort((a, b) => {
+        const sa = seedMap[a] ?? Number.MAX_SAFE_INTEGER;
+        const sb = seedMap[b] ?? Number.MAX_SAFE_INTEGER;
+        if (sa !== sb) return sa - sb;
+        return a.localeCompare(b);
+      });
+
+      const drawnEntries = sortedBySeed.slice(0, members.length);
+      const fieldEntries = sortedBySeed.slice(members.length);
+      console.log(
+        `[FIELD EVENT] Drawing top ${drawnEntries.length} of ${selectedTeams.length} entries by seed. ` +
+        `Left in field: ${fieldEntries.join(', ') || '(none)'}`
+      );
+      slotsToAssign = drawnEntries;
+    } else {
+      slotsToAssign = [...selectedTeams];
+    }
+
+    // Shuffle the slots that will actually be drawn
     const shuffledSlots = [...slotsToAssign].sort(() => Math.random() - 0.5);
 
     const ownershipRecords: Array<{
