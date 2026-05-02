@@ -192,10 +192,20 @@ Deno.serve(async (req) => {
         return a.localeCompare(b);
       });
 
-      const drawnEntries = sortedBySeed.slice(0, members.length);
-      const fieldEntries = sortedBySeed.slice(members.length);
+      // Determine entries-per-member: prefer the pool's configured value, but
+      // if it's still the default 1 and the math allows more, derive it from
+      // selected_teams / members so uneven counts (e.g. 19 horses / 8 members
+      // → 2 each, 3 in the field) draw the way creators expect.
+      const configuredPerMember = pool.teams_per_player ?? 1;
+      const derivedPerMember = Math.floor(selectedTeams.length / members.length);
+      const perMember = Math.max(configuredPerMember, derivedPerMember, 1);
+      const totalToDraw = Math.min(perMember * members.length, selectedTeams.length);
+
+      const drawnEntries = sortedBySeed.slice(0, totalToDraw);
+      const fieldEntries = sortedBySeed.slice(totalToDraw);
       console.log(
-        `[FIELD EVENT] Drawing top ${drawnEntries.length} of ${selectedTeams.length} entries by seed. ` +
+        `[FIELD EVENT] perMember=${perMember} (configured=${configuredPerMember}, derived=${derivedPerMember}). ` +
+        `Drawing top ${drawnEntries.length} of ${selectedTeams.length} entries by seed. ` +
         `Left in field: ${fieldEntries.join(', ') || '(none)'}`
       );
       slotsToAssign = drawnEntries;
