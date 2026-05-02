@@ -51,6 +51,9 @@ const ROUND_CONFIGS: Record<string, RoundConfig[]> = {
     { key: 'final_four', name: 'Final Four', order: 5 },
     { key: 'championship', name: 'Championship', order: 6 },
   ],
+  kentucky_derby: [
+    { key: 'race', name: 'The Race', order: 1 },
+  ],
 };
 
 Deno.serve(async (req) => {
@@ -260,11 +263,24 @@ Deno.serve(async (req) => {
     console.log(`Created ${createdRounds?.length} rounds`);
 
     // 6. Fetch events that match the pool's teams and competition
-    const { data: events, error: eventsError } = await supabase
-      .from('events')
-      .select('id, home_team, away_team, round_key, round_order')
-      .eq('competition_key', pool.competition_key)
-      .or(`home_team.in.(${selectedTeams.join(',')}),away_team.in.(${selectedTeams.join(',')})`);
+    // Field-event competitions (e.g. Kentucky Derby) have no head-to-head events.
+    const FIELD_EVENT_COMPETITIONS = new Set(['kentucky_derby']);
+    const isFieldEvent = FIELD_EVENT_COMPETITIONS.has(pool.competition_key);
+
+    let events: Array<{ id: string; home_team: string; away_team: string; round_key: string; round_order: number }> | null = null;
+    let eventsError: unknown = null;
+
+    if (!isFieldEvent) {
+      const eventsResult = await supabase
+        .from('events')
+        .select('id, home_team, away_team, round_key, round_order')
+        .eq('competition_key', pool.competition_key)
+        .or(`home_team.in.(${selectedTeams.join(',')}),away_team.in.(${selectedTeams.join(',')})`);
+      events = eventsResult.data;
+      eventsError = eventsResult.error;
+    } else {
+      console.log('[FIELD EVENT] Skipping events/matchups creation for', pool.competition_key);
+    }
 
     if (eventsError) {
       console.error('Error fetching events:', eventsError);

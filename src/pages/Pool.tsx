@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Header } from '@/components/layout/Header';
 import { ManagePoolDrawer } from '@/components/pool/ManagePoolDrawer';
 import { BracketView } from '@/components/bracket/BracketView';
+import { FieldView } from '@/components/pool/FieldView';
 import { MatchupPreview, MatchupPreviewData, groupMatchupsByRound } from '@/components/pool/MatchupPreview';
 import { TeamAssignmentDialog } from '@/components/pool/TeamAssignmentDialog';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,6 +33,7 @@ interface PoolData {
   created_by: string | null;
   created_at: string;
   selected_teams: string[] | null;
+  winner_member_id?: string | null;
 }
 
 interface PoolMember {
@@ -789,6 +791,7 @@ export default function Pool() {
 
   // Show bracket view for active/completed pools
   if ((pool.status === 'active' || pool.status === 'completed') && bracketPool) {
+    const isFieldEvent = competition?.format === 'field_event';
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -801,7 +804,18 @@ export default function Pool() {
               </Button>
             </div>
           )}
-          <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
+          {isFieldEvent ? (
+            <FieldView
+              pool={bracketPool}
+              poolStatus={pool.status as 'active' | 'completed'}
+              poolDbId={pool.id}
+              isCreator={isCreator}
+              winnerMemberId={pool.winner_member_id ?? null}
+              onWinnerDeclared={fetchPoolData}
+            />
+          ) : (
+            <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
+          )}
         </main>
         
         {/* First-visit assignment reveal dialog */}
