@@ -168,7 +168,8 @@ export function FieldView({
 
                   <div className="flex items-center gap-2 pt-2 border-t border-border">
                     <OwnerAvatar
-                      name={horse.ownerName ?? '?'}
+                      participantId={horse.ownerMemberId ?? horse.teamCode}
+                      displayName={horse.ownerName ?? '?'}
                       initials={horse.ownerInitials ?? '?'}
                       size="sm"
                     />
