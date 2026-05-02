@@ -791,6 +791,7 @@ export default function Pool() {
 
   // Show bracket view for active/completed pools
   if ((pool.status === 'active' || pool.status === 'completed') && bracketPool) {
+    const isFieldEvent = competition?.format === 'field_event';
     return (
       <div className="min-h-screen bg-background">
         <Header />
@@ -803,7 +804,18 @@ export default function Pool() {
               </Button>
             </div>
           )}
-          <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
+          {isFieldEvent ? (
+            <FieldView
+              pool={bracketPool}
+              poolStatus={pool.status as 'active' | 'completed'}
+              poolDbId={pool.id}
+              isCreator={isCreator}
+              winnerMemberId={pool.winner_member_id ?? null}
+              onWinnerDeclared={fetchPoolData}
+            />
+          ) : (
+            <BracketView pool={bracketPool} auditLogs={auditLogs} oddsLastUpdated={oddsLastUpdated} />
+          )}
         </main>
         
         {/* First-visit assignment reveal dialog */}
