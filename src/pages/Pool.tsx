@@ -33,6 +33,7 @@ interface PoolData {
   created_by: string | null;
   created_at: string;
   selected_teams: string[] | null;
+  winner_member_id?: string | null;
 }
 
 interface PoolMember {
